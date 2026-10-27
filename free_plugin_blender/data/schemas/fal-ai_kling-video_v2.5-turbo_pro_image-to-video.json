@@ -1,0 +1,35 @@
+{
+ "id": "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+ "prompt_field": "prompt",
+ "image_field": "image_url",
+ "image_list": false,
+ "fields": [
+  {
+   "name": "duration",
+   "title": "Duration",
+   "kind": "ENUM",
+   "description": "The duration of the generated video in seconds",
+   "options": [
+    "5",
+    "10"
+   ],
+   "default": "5"
+  },
+  {
+   "name": "negative_prompt",
+   "title": "Negative Prompt",
+   "kind": "STRING",
+   "description": "",
+   "default": "blur, distort, and low quality"
+  },
+  {
+   "name": "cfg_scale",
+   "title": "Cfg Scale",
+   "kind": "FLOAT",
+   "description": "\n            The CFG (Classifier Free Guidance) scale is a measure of how close you want\n            the model to stick to your prompt.\n        ",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.5
+  }
+ ]
+}

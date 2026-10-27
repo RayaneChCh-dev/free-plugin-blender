@@ -14,8 +14,16 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "free_plugin_blender"
 
 
+def check_manifest(manifest: str):
+    """Blender rejects permission reasons over 64 characters or ending with a period."""
+    for name, reason in re.findall(r'^(network|files|clipboard|camera|microphone) = "(.*)"$', manifest, re.M):
+        if len(reason) > 64 or reason.endswith("."):
+            raise SystemExit(f"blender_manifest.toml: permission {name!r} reason must be <= 64 chars, no final period")
+
+
 def main() -> int:
     manifest = (SRC / "blender_manifest.toml").read_text()
+    check_manifest(manifest)
     version = re.search(r'^version = "(.+)"', manifest, re.M)[1]
     out = ROOT / "dist" / f"free_plugin_blender-{version}.zip"
     out.parent.mkdir(exist_ok=True)

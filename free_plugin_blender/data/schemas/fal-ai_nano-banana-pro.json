@@ -1,0 +1,148 @@
+{
+ "id": "fal-ai/nano-banana-pro",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "return_history",
+   "title": "Return History",
+   "kind": "BOOL",
+   "description": "Return reusable native conversations with original image parts and provider thought signatures. Uses a native provider. Each generated conversation is independent; send its messages as history for the next turn.",
+   "default": false
+  },
+  {
+   "name": "thinking_level",
+   "title": "Thinking Level",
+   "kind": "STRING",
+   "description": "Thinking effort. Pro Image supports only high; omit to retain its provider default. An explicit level requests summaries unless include_thoughts overrides it. Thinking cannot be disabled."
+  },
+  {
+   "name": "image_passthrough",
+   "title": "Image Passthrough",
+   "kind": "BOOL",
+   "description": "Send reference images and return provider images without resizing or re-encoding, preserving transparency and metadata. Uses direct Google or Vertex APIs; the returned image format may differ from output_format.",
+   "default": false
+  },
+  {
+   "name": "include_thoughts",
+   "title": "Include Thoughts",
+   "kind": "BOOL",
+   "description": "Whether to include thought summaries. Omit to preserve the existing behavior: an explicit thinking_level requests summaries. Set limit_generations=false to return summary text in description. This does not disable thinking or return intermediate thought images."
+  },
+  {
+   "name": "temperature",
+   "title": "Temperature",
+   "kind": "FLOAT",
+   "description": "Sampling temperature. Omit to use the provider default of 1. Explicit values use a direct Google or Vertex API.",
+   "minimum": 0,
+   "maximum": 2
+  },
+  {
+   "name": "top_p",
+   "title": "Top P",
+   "kind": "FLOAT",
+   "description": "Nucleus sampling probability. Omit to use the provider default of 0.95. Explicit values use a direct Google or Vertex API.",
+   "minimum": 0,
+   "maximum": 1
+  },
+  {
+   "name": "max_output_tokens",
+   "title": "Max Output Tokens",
+   "kind": "INT",
+   "description": "Maximum output tokens for the generation. Omit to retain the provider default. Explicit values use a direct Google or Vertex API.",
+   "minimum": 1,
+   "maximum": 32768
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "The seed for the random number generator."
+  },
+  {
+   "name": "aspect_ratio",
+   "title": "Aspect Ratio",
+   "kind": "ENUM",
+   "description": "The aspect ratio of the generated image.",
+   "options": [
+    "auto",
+    "21:9",
+    "16:9",
+    "3:2",
+    "4:3",
+    "5:4",
+    "1:1",
+    "4:5",
+    "3:4",
+    "2:3",
+    "9:16",
+    "4:1",
+    "1:4",
+    "8:1",
+    "1:8"
+   ],
+   "default": "1:1"
+  },
+  {
+   "name": "output_format",
+   "title": "Output Format",
+   "kind": "ENUM",
+   "description": "The format of the generated image.",
+   "options": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "default": "png"
+  },
+  {
+   "name": "safety_tolerance",
+   "title": "Safety Tolerance",
+   "kind": "ENUM",
+   "description": "The safety tolerance level for content moderation. 1 is the most strict (blocks most content), 6 is the least strict.",
+   "options": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6"
+   ],
+   "default": "4"
+  },
+  {
+   "name": "system_prompt",
+   "title": "System Prompt",
+   "kind": "STRING",
+   "description": "Optional system instruction that steers the model's persona and output style across the request. Leave blank to omit; when provided, it is sent as the system instruction to Gemini (or as a system message on OpenAI-compatible providers).",
+   "default": ""
+  },
+  {
+   "name": "resolution",
+   "title": "Resolution",
+   "kind": "ENUM",
+   "description": "The resolution of the image to generate.",
+   "options": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "default": "1K"
+  },
+  {
+   "name": "limit_generations",
+   "title": "Limit Generations",
+   "kind": "BOOL",
+   "description": "Experimental parameter to limit the number of generations from each round of prompting to 1. Set to `True` to to disregard any instructions in the prompt regarding the number of images to generate.",
+   "default": true
+  },
+  {
+   "name": "enable_web_search",
+   "title": "Enable Web Search",
+   "kind": "BOOL",
+   "description": "Enable web search for the image generation task. This will allow the model to use the latest information from the web to generate the image.",
+   "default": false
+  }
+ ]
+}

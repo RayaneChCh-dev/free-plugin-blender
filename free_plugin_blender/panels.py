@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import bpy
 
-from . import prefs, tasks
-from .providers import fal
+from . import params, prefs, tasks
 
 
 class _Panel(bpy.types.Panel):
@@ -43,13 +42,12 @@ class FREEPLUGIN_PT_image(_Panel):
     def draw(self, context):
         props = context.scene.free_plugin
         layout = self.layout
+        params.draw_slot(layout, context.scene, "image")
         layout.prop(props, "image_prompt", text="")
         layout.prop(props, "image_reference")
         if props.image_reference == "FILE":
             layout.prop(props, "image_reference_path", text="")
-        row = layout.row()
-        row.prop(props, "image_size", text="")
-        row.prop(props, "image_placement", text="")
+        layout.prop(props, "image_placement")
         layout.operator("freeplugin.generate_image", icon="IMAGE_DATA")
 
 
@@ -60,6 +58,7 @@ class FREEPLUGIN_PT_material(_Panel):
     def draw(self, context):
         props = context.scene.free_plugin
         layout = self.layout
+        layout.label(text="Uses the Image panel's model", icon="INFO")
         layout.prop(props, "texture_prompt", text="")
         layout.prop(props, "texture_tiling")
         layout.operator("freeplugin.generate_texture", icon="MATERIAL")
@@ -77,14 +76,9 @@ class FREEPLUGIN_PT_video(_Panel):
     def draw(self, context):
         props = context.scene.free_plugin
         layout = self.layout
+        params.draw_slot(layout, context.scene, "video")
         layout.prop(props, "video_prompt", text="")
         layout.prop(props, "video_source")
-        row = layout.row()
-        row.prop(props, "video_duration")
-        if props.video_source == "TEXT":
-            row.prop(props, "video_aspect", text="")
-        layout.prop(props, "video_audio")
-        layout.label(text=f"≈ ${0.14 * props.video_duration:.2f} with Kling 3.0 Pro", icon="INFO")
         layout.operator("freeplugin.generate_video", icon="FILE_MOVIE")
 
 
@@ -96,16 +90,16 @@ class FREEPLUGIN_PT_model(_Panel):
     def draw(self, context):
         props = context.scene.free_plugin
         layout = self.layout
-        layout.prop(props, "mesh_provider", text="")
-        spec = fal.MODELS_3D.get(props.mesh_provider)
         layout.prop(props, "mesh_source", expand=True)
+        params.draw_slot(layout, context.scene, "mesh")
+        entry = props.mesh_model.entry() or {}
         if props.mesh_source == "TEXT":
             layout.prop(props, "mesh_prompt", text="")
-            if spec and "text" not in spec:
-                layout.label(text="Via a Seedream image (+$0.04)", icon="INFO")
+            if entry and not entry.get("text") and not entry.get("provider"):
+                layout.label(text="Text → image (Image panel model) → 3D", icon="INFO")
         elif props.mesh_source == "FILE":
             layout.prop(props, "mesh_image_path", text="")
-        if spec is None or "pbr_field" in spec:
+        if entry.get("provider") == "meshy":
             row = layout.row()
             row.prop(props, "mesh_texture")
             sub = row.row()

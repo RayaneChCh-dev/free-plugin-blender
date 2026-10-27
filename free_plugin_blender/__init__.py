@@ -7,7 +7,7 @@ that such a client can call.
 
 import bpy
 
-from . import operators, panels, prefs, props, tasks
+from . import catalog, operators, panels, params, prefs, props, tasks
 
 _classes = (prefs.FreePluginPreferences, *operators.classes, *panels.classes)
 
@@ -16,10 +16,13 @@ def register():
     props.register()
     for cls in _classes:
         bpy.utils.register_class(cls)
+    catalog.configure(prefs.user_dir())
     tasks.register()
+    params.register_handlers()
 
 
 def unregister():
+    params.unregister_handlers()
     tasks.unregister()
     for cls in reversed(_classes):
         bpy.utils.unregister_class(cls)

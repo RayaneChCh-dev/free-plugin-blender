@@ -1,0 +1,26 @@
+{
+ "id": "fal-ai/minimax/hailuo-02/standard/text-to-video",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "duration",
+   "title": "Duration",
+   "kind": "ENUM",
+   "description": "The duration of the video in seconds. 10 seconds videos are not supported for 1080p resolution.",
+   "options": [
+    "6",
+    "10"
+   ],
+   "default": "6"
+  },
+  {
+   "name": "prompt_optimizer",
+   "title": "Prompt Optimizer",
+   "kind": "BOOL",
+   "description": "Whether to use the model's prompt optimizer",
+   "default": true
+  }
+ ]
+}

@@ -1,0 +1,270 @@
+{
+ "id": "fal-ai/trellis-2",
+ "prompt_field": null,
+ "image_field": "image_url",
+ "image_list": false,
+ "fields": [
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "Random seed for reproducibility"
+  },
+  {
+   "name": "resolution",
+   "title": "Resolution",
+   "kind": "ENUM",
+   "description": "Output resolution; higher is slower but more detailed",
+   "options": [
+    512,
+    1024,
+    1536
+   ],
+   "default": 1024
+  },
+  {
+   "name": "ss_guidance_strength",
+   "title": "Ss Guidance Strength",
+   "kind": "FLOAT",
+   "description": "How closely the initial 3D structure follows the input image. Higher values produce more faithful but potentially noisier results.",
+   "minimum": 0,
+   "maximum": 10,
+   "default": 7.5
+  },
+  {
+   "name": "ss_guidance_rescale",
+   "title": "Ss Guidance Rescale",
+   "kind": "FLOAT",
+   "description": "Dampens artifacts from high guidance in stage 1. Lower values allow stronger guidance effects, higher values stabilize the output.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.7
+  },
+  {
+   "name": "ss_guidance_interval_start",
+   "title": "Ss Guidance Interval Start",
+   "kind": "FLOAT",
+   "description": "Fraction of the denoising process at which classifier-free guidance starts for stage 1 (sparse structure). Guidance is only applied between interval_start and interval_end; outside this window the model runs unguided. Lower values apply guidance earlier.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.6
+  },
+  {
+   "name": "ss_guidance_interval_end",
+   "title": "Ss Guidance Interval End",
+   "kind": "FLOAT",
+   "description": "Fraction of the denoising process at which classifier-free guidance ends for stage 1 (sparse structure). Must be >= ss_guidance_interval_start.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 1
+  },
+  {
+   "name": "ss_sampling_steps",
+   "title": "Ss Sampling Steps",
+   "kind": "INT",
+   "description": "Number of denoising steps for the initial structure. More steps = slower but potentially higher quality.",
+   "minimum": 1,
+   "maximum": 50,
+   "default": 12
+  },
+  {
+   "name": "ss_rescale_t",
+   "title": "Ss Rescale T",
+   "kind": "FLOAT",
+   "description": "Controls noise schedule sharpness for structure generation. Higher values produce sharper transitions.",
+   "minimum": 1,
+   "maximum": 6,
+   "default": 5
+  },
+  {
+   "name": "shape_slat_guidance_strength",
+   "title": "Shape Slat Guidance Strength",
+   "kind": "FLOAT",
+   "description": "How closely the detailed geometry follows the input image. Higher values add more detail but may introduce noise.",
+   "minimum": 0,
+   "maximum": 10,
+   "default": 7.5
+  },
+  {
+   "name": "shape_slat_guidance_rescale",
+   "title": "Shape Slat Guidance Rescale",
+   "kind": "FLOAT",
+   "description": "Dampens artifacts from high guidance in the shape stage. Increase if you see noisy geometry.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.5
+  },
+  {
+   "name": "shape_slat_guidance_interval_start",
+   "title": "Shape Slat Guidance Interval Start",
+   "kind": "FLOAT",
+   "description": "Fraction of the denoising process at which classifier-free guidance starts for stage 2 (shape refinement). Guidance is only applied between interval_start and interval_end.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.6
+  },
+  {
+   "name": "shape_slat_guidance_interval_end",
+   "title": "Shape Slat Guidance Interval End",
+   "kind": "FLOAT",
+   "description": "Fraction of the denoising process at which classifier-free guidance ends for stage 2 (shape refinement). Must be >= shape_slat_guidance_interval_start.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 1
+  },
+  {
+   "name": "shape_slat_sampling_steps",
+   "title": "Shape Slat Sampling Steps",
+   "kind": "INT",
+   "description": "Number of denoising steps for shape refinement. More steps = slower but potentially smoother geometry.",
+   "minimum": 1,
+   "maximum": 50,
+   "default": 12
+  },
+  {
+   "name": "shape_slat_rescale_t",
+   "title": "Shape Slat Rescale T",
+   "kind": "FLOAT",
+   "description": "Controls noise schedule sharpness for shape refinement. Higher values produce sharper geometric details.",
+   "minimum": 1,
+   "maximum": 6,
+   "default": 3
+  },
+  {
+   "name": "tex_slat_guidance_strength",
+   "title": "Tex Slat Guidance Strength",
+   "kind": "FLOAT",
+   "description": "How closely the texture follows the input image colors. Higher values produce more vivid but potentially oversaturated textures.",
+   "minimum": 0,
+   "maximum": 10,
+   "default": 1
+  },
+  {
+   "name": "tex_slat_guidance_rescale",
+   "title": "Tex Slat Guidance Rescale",
+   "kind": "FLOAT",
+   "description": "Dampens artifacts from high guidance in the texture stage. Increase if textures look noisy or have color banding.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0
+  },
+  {
+   "name": "tex_slat_guidance_interval_start",
+   "title": "Tex Slat Guidance Interval Start",
+   "kind": "FLOAT",
+   "description": "Fraction of the denoising process at which classifier-free guidance starts for stage 3 (texture). Guidance is only applied between interval_start and interval_end.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.6
+  },
+  {
+   "name": "tex_slat_guidance_interval_end",
+   "title": "Tex Slat Guidance Interval End",
+   "kind": "FLOAT",
+   "description": "Fraction of the denoising process at which classifier-free guidance ends for stage 3 (texture). Must be >= tex_slat_guidance_interval_start.",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.9
+  },
+  {
+   "name": "tex_slat_sampling_steps",
+   "title": "Tex Slat Sampling Steps",
+   "kind": "INT",
+   "description": "Number of denoising steps for texture generation. More steps = slower but potentially cleaner textures.",
+   "minimum": 1,
+   "maximum": 50,
+   "default": 12
+  },
+  {
+   "name": "tex_slat_rescale_t",
+   "title": "Tex Slat Rescale T",
+   "kind": "FLOAT",
+   "description": "Controls noise schedule sharpness for texture generation. Higher values produce sharper texture details.",
+   "minimum": 1,
+   "maximum": 6,
+   "default": 3
+  },
+  {
+   "name": "decimation_target",
+   "title": "Decimation Target",
+   "kind": "INT",
+   "description": "Target number of vertices in the final mesh. Lower values produce smaller files but less detail. 500k is good for most uses, reduce to 20k-50k for web/mobile.",
+   "minimum": 5000,
+   "maximum": 2000000,
+   "default": 500000
+  },
+  {
+   "name": "texture_size",
+   "title": "Texture Size",
+   "kind": "ENUM",
+   "description": "Resolution of the texture image baked onto the mesh. Higher values capture finer surface details but produce larger files.",
+   "options": [
+    1024,
+    2048,
+    4096
+   ],
+   "default": 2048
+  },
+  {
+   "name": "remesh",
+   "title": "Remesh",
+   "kind": "BOOL",
+   "description": "Rebuild the mesh topology for cleaner triangles. Slower but usually produces better results for downstream use (animation, 3D printing, etc).",
+   "default": true
+  },
+  {
+   "name": "remesh_band",
+   "title": "Remesh Band",
+   "kind": "FLOAT",
+   "description": "Controls how far remeshing can move vertices from the original surface. Higher values allow more smoothing but may lose fine details.",
+   "minimum": 0,
+   "maximum": 4,
+   "default": 1
+  },
+  {
+   "name": "remesh_project",
+   "title": "Remesh Project",
+   "kind": "FLOAT",
+   "description": "How much to project remeshed vertices back onto the original surface. 0 = no projection (smoother), 1 = full projection (preserves detail).",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0
+  },
+  {
+   "name": "uv_unwrap_angle_threshold_deg",
+   "title": "Uv Unwrap Angle Threshold Deg",
+   "kind": "FLOAT",
+   "description": "Maximum angle (in degrees) between adjacent face normals allowed within a single UV chart. Lower values produce more charts with less distortion; higher values produce fewer, larger charts with potentially more stretching.",
+   "minimum": 0,
+   "maximum": 180,
+   "default": 90
+  },
+  {
+   "name": "uv_unwrap_refine_iterations",
+   "title": "Uv Unwrap Refine Iterations",
+   "kind": "INT",
+   "description": "Number of local refinement passes during UV chart computation. Higher values produce cleaner chart boundaries at the cost of additional UV-unwrap time.",
+   "minimum": 0,
+   "maximum": 10,
+   "default": 0
+  },
+  {
+   "name": "uv_unwrap_global_iterations",
+   "title": "Uv Unwrap Global Iterations",
+   "kind": "INT",
+   "description": "Number of global clustering passes during UV chart computation. More passes produce more balanced charts.",
+   "minimum": 1,
+   "maximum": 10,
+   "default": 1
+  },
+  {
+   "name": "uv_unwrap_smooth_strength",
+   "title": "Uv Unwrap Smooth Strength",
+   "kind": "FLOAT",
+   "description": "Smoothing strength applied to UV chart boundaries. Higher values reduce visible seams but may introduce UV distortion.",
+   "minimum": 0,
+   "maximum": 10,
+   "default": 1
+  }
+ ]
+}

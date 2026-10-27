@@ -1,4 +1,4 @@
-"""API keys, model ids and output folder, in Preferences > Add-ons."""
+"""API keys and output folder, in Preferences > Add-ons. Models are chosen in the panels."""
 
 from __future__ import annotations
 
@@ -6,8 +6,6 @@ import os
 from pathlib import Path
 
 import bpy
-
-from .providers import fal
 
 ADDON_ID = __package__
 
@@ -23,10 +21,6 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         name="Meshy key (optional)", subtype="PASSWORD",
         description="From https://www.meshy.ai/settings/api (env var MESHY_API_KEY also works)",
     )
-    image_model: bpy.props.StringProperty(name="Text → image", default=fal.IMAGE_MODEL)
-    edit_model: bpy.props.StringProperty(name="Image edit", default=fal.EDIT_MODEL)
-    video_t2v_model: bpy.props.StringProperty(name="Text → video", default=fal.VIDEO_T2V_MODEL)
-    video_i2v_model: bpy.props.StringProperty(name="Image → video", default=fal.VIDEO_I2V_MODEL)
     output_dir: bpy.props.StringProperty(
         name="Output folder", subtype="DIR_PATH",
         description="Where generated files are saved (empty: the extension's user folder)",
@@ -45,9 +39,12 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         layout.prop(self, "output_dir")
         layout.prop(self, "show_video")
         box = layout.box()
-        box.label(text="fal.ai model ids (any id from fal.ai/models)")
-        for name in ("image_model", "edit_model", "video_t2v_model", "video_i2v_model"):
-            box.prop(self, name)
+        box.label(text="Models are chosen in the sidebar panels. Add your own:")
+        row = box.row()
+        row.operator("freeplugin.open_catalog", icon="TEXT")
+        row.operator("freeplugin.reload_catalog", icon="FILE_REFRESH")
+        box.operator("freeplugin.reload_catalog", text="Re-download model options",
+                     icon="URL").clear_cache = True
 
 
 def get():
@@ -62,15 +59,19 @@ def meshy_key():
     return get().meshy_key.strip() or os.environ.get("MESHY_API_KEY", "").strip()
 
 
+def user_dir() -> Path:
+    """The extension's own writable folder (catalog, schema cache, default outputs)."""
+    try:
+        return Path(bpy.utils.extension_path_user(ADDON_ID, create=True))
+    except (AttributeError, ValueError):  # legacy add-on install
+        path = Path.home() / "free-plugin-blender"
+        path.mkdir(exist_ok=True)
+        return path
+
+
 def output_dir(*parts) -> Path:
     configured = get().output_dir.strip()
-    if configured:
-        root = Path(bpy.path.abspath(configured))
-    else:
-        try:
-            root = Path(bpy.utils.extension_path_user(ADDON_ID, path="outputs", create=True))
-        except (AttributeError, ValueError):  # legacy add-on install
-            root = Path.home() / "free-plugin-blender"
+    root = Path(bpy.path.abspath(configured)) if configured else user_dir() / "outputs"
     path = root.joinpath(*parts)
     path.mkdir(parents=True, exist_ok=True)
     return path

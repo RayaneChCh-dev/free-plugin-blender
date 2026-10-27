@@ -1,0 +1,177 @@
+{
+ "id": "fal-ai/wan/v2.2-a14b/text-to-video",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "negative_prompt",
+   "title": "Negative Prompt",
+   "kind": "STRING",
+   "description": "Negative prompt for video generation.",
+   "default": ""
+  },
+  {
+   "name": "num_frames",
+   "title": "Number of Frames",
+   "kind": "INT",
+   "description": "Number of frames to generate. Must be between 17 to 161 (inclusive).",
+   "minimum": 17,
+   "maximum": 161,
+   "default": 81
+  },
+  {
+   "name": "frames_per_second",
+   "title": "Frames per Second",
+   "kind": "INT",
+   "description": "Frames per second of the generated video. Must be between 4 to 60. When using interpolation and `adjust_fps_for_interpolation` is set to true (default true,) the final FPS will be multiplied by the number of interpolated frames plus one. For example, if the generated frames per second is 16 and the ",
+   "minimum": 4,
+   "maximum": 60,
+   "default": 16
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "Random seed for reproducibility. If None, a random seed is chosen."
+  },
+  {
+   "name": "resolution",
+   "title": "Resolution",
+   "kind": "ENUM",
+   "description": "Resolution of the generated video (480p, 580p, or 720p).",
+   "options": [
+    "480p",
+    "580p",
+    "720p"
+   ],
+   "default": "720p"
+  },
+  {
+   "name": "aspect_ratio",
+   "title": "Aspect Ratio",
+   "kind": "ENUM",
+   "description": "Aspect ratio of the generated video (16:9 or 9:16).",
+   "options": [
+    "16:9",
+    "9:16",
+    "1:1"
+   ],
+   "default": "16:9"
+  },
+  {
+   "name": "num_inference_steps",
+   "title": "Number of Inference Steps",
+   "kind": "INT",
+   "description": "Number of inference steps for sampling. Higher values give better quality but take longer.",
+   "minimum": 2,
+   "maximum": 40,
+   "default": 27
+  },
+  {
+   "name": "enable_output_safety_checker",
+   "title": "Enable Output Safety Checker",
+   "kind": "BOOL",
+   "description": "If set to true, output video will be checked for safety after generation.",
+   "default": false
+  },
+  {
+   "name": "enable_prompt_expansion",
+   "title": "Enable Prompt Expansion",
+   "kind": "BOOL",
+   "description": "Whether to enable prompt expansion. This will use a large language model to expand the prompt with additional details while maintaining the original meaning.",
+   "default": false
+  },
+  {
+   "name": "acceleration",
+   "title": "Acceleration",
+   "kind": "ENUM",
+   "description": "Acceleration level to use. The more acceleration, the faster the generation, but with lower quality. The recommended value is 'regular'.",
+   "options": [
+    "none",
+    "regular"
+   ],
+   "default": "regular"
+  },
+  {
+   "name": "guidance_scale",
+   "title": "Guidance Scale (1st Stage)",
+   "kind": "FLOAT",
+   "description": "Classifier-free guidance scale. Higher values give better adherence to the prompt but may decrease quality.",
+   "minimum": 1,
+   "maximum": 10,
+   "default": 3.5
+  },
+  {
+   "name": "guidance_scale_2",
+   "title": "Guidance Scale (2nd Stage)",
+   "kind": "FLOAT",
+   "description": "Guidance scale for the second stage of the model. This is used to control the adherence to the prompt in the second stage of the model.",
+   "minimum": 1,
+   "maximum": 10,
+   "default": 4
+  },
+  {
+   "name": "shift",
+   "title": "Shift",
+   "kind": "FLOAT",
+   "description": "Shift value for the video. Must be between 1.0 and 10.0.",
+   "minimum": 1,
+   "maximum": 10,
+   "default": 5
+  },
+  {
+   "name": "interpolator_model",
+   "title": "Interpolator Model",
+   "kind": "ENUM",
+   "description": "The model to use for frame interpolation. If None, no interpolation is applied.",
+   "options": [
+    "none",
+    "film",
+    "rife"
+   ],
+   "default": "film"
+  },
+  {
+   "name": "num_interpolated_frames",
+   "title": "Number of Interpolated Frames",
+   "kind": "INT",
+   "description": "Number of frames to interpolate between each pair of generated frames. Must be between 0 and 4.",
+   "minimum": 0,
+   "maximum": 4,
+   "default": 1
+  },
+  {
+   "name": "adjust_fps_for_interpolation",
+   "title": "Adjust FPS for Interpolation",
+   "kind": "BOOL",
+   "description": "If true, the number of frames per second will be multiplied by the number of interpolated frames plus one. For example, if the generated frames per second is 16 and the number of interpolated frames is 1, the final frames per second will be 32. If false, the passed frames per second will be used as-",
+   "default": true
+  },
+  {
+   "name": "video_quality",
+   "title": "Video Quality",
+   "kind": "ENUM",
+   "description": "The quality of the output video. Higher quality means better visual quality but larger file size.",
+   "options": [
+    "low",
+    "medium",
+    "high",
+    "maximum"
+   ],
+   "default": "high"
+  },
+  {
+   "name": "video_write_mode",
+   "title": "Video Write Mode",
+   "kind": "ENUM",
+   "description": "The write mode of the output video. Faster write mode means faster results but larger file size, balanced write mode is a good compromise between speed and quality, and small write mode is the slowest but produces the smallest file size.",
+   "options": [
+    "fast",
+    "balanced",
+    "small"
+   ],
+   "default": "balanced"
+  }
+ ]
+}

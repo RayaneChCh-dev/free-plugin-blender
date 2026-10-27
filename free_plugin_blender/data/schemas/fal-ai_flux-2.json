@@ -1,0 +1,78 @@
+{
+ "id": "fal-ai/flux-2",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "guidance_scale",
+   "title": "Guidance Scale",
+   "kind": "FLOAT",
+   "description": "Guidance Scale is a measure of how close you want the model to stick to your prompt when looking for a related image to show you.",
+   "minimum": 0,
+   "maximum": 20,
+   "default": 2.5
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "The seed to use for the generation. If not provided, a random seed will be used."
+  },
+  {
+   "name": "num_inference_steps",
+   "title": "Number of Inference Steps",
+   "kind": "INT",
+   "description": "The number of inference steps to perform.",
+   "minimum": 4,
+   "maximum": 50,
+   "default": 28
+  },
+  {
+   "name": "image_size",
+   "title": "Image Size",
+   "kind": "ENUM",
+   "description": "The size of the image to generate. The width and height must be between 512 and 2048 pixels.",
+   "options": [
+    "square_hd",
+    "square",
+    "portrait_4_3",
+    "portrait_16_9",
+    "landscape_4_3",
+    "landscape_16_9"
+   ],
+   "default": "landscape_4_3"
+  },
+  {
+   "name": "acceleration",
+   "title": "Acceleration",
+   "kind": "ENUM",
+   "description": "The acceleration level to use for the image generation.",
+   "options": [
+    "none",
+    "regular",
+    "high"
+   ],
+   "default": "regular"
+  },
+  {
+   "name": "enable_prompt_expansion",
+   "title": "Enable Prompt Expansion",
+   "kind": "BOOL",
+   "description": "If set to true, the prompt will be expanded for better results.",
+   "default": false
+  },
+  {
+   "name": "output_format",
+   "title": "Output Format",
+   "kind": "ENUM",
+   "description": "The format of the generated image.",
+   "options": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "default": "png"
+  }
+ ]
+}

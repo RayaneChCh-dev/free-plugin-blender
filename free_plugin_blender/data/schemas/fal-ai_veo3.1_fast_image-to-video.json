@@ -1,0 +1,85 @@
+{
+ "id": "fal-ai/veo3.1/fast/image-to-video",
+ "prompt_field": "prompt",
+ "image_field": "image_url",
+ "image_list": false,
+ "fields": [
+  {
+   "name": "aspect_ratio",
+   "title": "Aspect Ratio",
+   "kind": "ENUM",
+   "description": "The aspect ratio of the generated video. Only 16:9 and 9:16 are supported.",
+   "options": [
+    "auto",
+    "16:9",
+    "9:16"
+   ],
+   "default": "auto"
+  },
+  {
+   "name": "duration",
+   "title": "Duration",
+   "kind": "ENUM",
+   "description": "The duration of the generated video.",
+   "options": [
+    "4s",
+    "6s",
+    "8s"
+   ],
+   "default": "8s"
+  },
+  {
+   "name": "negative_prompt",
+   "title": "Negative Prompt",
+   "kind": "STRING",
+   "description": "A negative prompt to guide the video generation."
+  },
+  {
+   "name": "resolution",
+   "title": "Resolution",
+   "kind": "ENUM",
+   "description": "The resolution of the generated video.",
+   "options": [
+    "720p",
+    "1080p",
+    "4k"
+   ],
+   "default": "720p"
+  },
+  {
+   "name": "generate_audio",
+   "title": "Generate Audio",
+   "kind": "BOOL",
+   "description": "Whether to generate audio for the video.",
+   "default": true
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "The seed for the random number generator."
+  },
+  {
+   "name": "auto_fix",
+   "title": "Auto Fix",
+   "kind": "BOOL",
+   "description": "Whether to automatically attempt to fix prompts that fail content policy or other validation checks by rewriting them.",
+   "default": false
+  },
+  {
+   "name": "safety_tolerance",
+   "title": "Safety Tolerance",
+   "kind": "ENUM",
+   "description": "The safety tolerance level for content moderation. 1 is the most strict (blocks most content), 6 is the least strict.",
+   "options": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6"
+   ],
+   "default": "4"
+  }
+ ]
+}

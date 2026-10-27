@@ -27,8 +27,17 @@ def export_selected_glb(path: Path) -> Path:
 
 
 def import_glb(path: Path, tag: dict | None = None) -> list[str]:
+    """Import a model (GLB/glTF, FBX, OBJ or USD, by extension) and tag the new objects."""
     before = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=str(path))
+    suffix = Path(path).suffix.lower()
+    if suffix == ".fbx":
+        bpy.ops.import_scene.fbx(filepath=str(path))
+    elif suffix == ".obj":
+        bpy.ops.wm.obj_import(filepath=str(path))
+    elif suffix in {".usd", ".usdz", ".usda", ".usdc"}:
+        bpy.ops.wm.usd_import(filepath=str(path))
+    else:
+        bpy.ops.import_scene.gltf(filepath=str(path))
     new = [o for o in bpy.data.objects if o not in before]
     for obj in new:
         for key, value in (tag or {}).items():

@@ -1,0 +1,37 @@
+{
+ "id": "fal-ai/minimax/hailuo-02/standard/image-to-video",
+ "prompt_field": "prompt",
+ "image_field": "image_url",
+ "image_list": false,
+ "fields": [
+  {
+   "name": "duration",
+   "title": "Duration",
+   "kind": "ENUM",
+   "description": "The duration of the video in seconds. 10 seconds videos are not supported for 1080p resolution.",
+   "options": [
+    "6",
+    "10"
+   ],
+   "default": "6"
+  },
+  {
+   "name": "prompt_optimizer",
+   "title": "Prompt Optimizer",
+   "kind": "BOOL",
+   "description": "Whether to use the model's prompt optimizer",
+   "default": true
+  },
+  {
+   "name": "resolution",
+   "title": "Resolution",
+   "kind": "ENUM",
+   "description": "The resolution of the generated video.",
+   "options": [
+    "512P",
+    "768P"
+   ],
+   "default": "768P"
+  }
+ ]
+}

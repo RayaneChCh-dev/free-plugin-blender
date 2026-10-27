@@ -1,21 +1,28 @@
-"""The buttons. Each operator reads `scene.free_plugin`; `prompt=` overrides the panel's prompt.
+"""The buttons. Each operator reads `scene.free_plugin`; keyword arguments override the panel.
 
 They return immediately and finish in the background (see `tasks.py`), which
 also makes them callable from an MCP client:
 
     bpy.ops.freeplugin.generate_image(prompt="a moroccan riad courtyard at dusk")
+    bpy.ops.freeplugin.generate_3d(prompt="a clay tagine", model="trellis")
+    bpy.ops.freeplugin.generate_video(prompt="slow dolly in", model="kling25_turbo",
+                                      options='{"duration": "10"}')
 """
 
 from __future__ import annotations
 
+import json
 import re
 import time
 from pathlib import Path
 
 import bpy
 
-from . import net, prefs, scene, tasks
+from . import catalog, net, prefs, scene, tasks
 from .providers import fal, meshy, polyhaven
+
+TEXTURE_PROMPT = ("Seamless tileable PBR albedo texture of {}, flat even lighting, "
+                  "no shadows, no perspective, top-down orthographic, edges tile perfectly")
 
 
 def _stamp(prompt, ext):
@@ -23,9 +30,40 @@ def _stamp(prompt, ext):
     return f"{time.strftime('%Y%m%d-%H%M%S')}-{slug}.{ext}"
 
 
+class _ModelChoice:
+    """What to call: (endpoint, schema or None, options) resolved on the main thread."""
+
+    def __init__(self, entry, endpoint, options, extra):
+        self.entry, self.endpoint = entry, endpoint
+        self.schema = catalog.cached_schema(endpoint) if endpoint else None
+        self.options, self.extra = options, extra
+
+    def run(self, task, key, kind, out_dir, label, *, prompt=None, images=(), square=False):
+        """Worker thread: call fal.ai and download the output file."""
+        schema = self.schema or catalog.fetch_schema(self.endpoint)
+        names = {f["name"] for f in schema.get("fields", [])}
+        options = {k: v for k, v in self.options.items() if k in names}
+        if square:
+            options = fal.square_options(schema, options)
+        options.update(self.extra)
+        payload = fal.build_payload(schema, options, prompt=prompt, image_uris=[net.data_uri(p) for p in images])
+        result = fal.run(self.endpoint, payload, key, task.set)
+        url = fal.result_url(result, kind)
+        task.set("downloading…")
+        return net.download(url, out_dir / _stamp(label, fal.extension(url, kind)))
+
+
 class _Generate(bpy.types.Operator):
     bl_options = {"REGISTER"}
     prompt: bpy.props.StringProperty(name="Prompt", options={"SKIP_SAVE"})
+    model: bpy.props.StringProperty(
+        name="Model", options={"SKIP_SAVE"},
+        description="Catalog key (e.g. seedream45, kling3_pro, trellis) or any fal.ai model id; empty: the panel's choice",
+    )
+    options: bpy.props.StringProperty(
+        name="Options", options={"SKIP_SAVE"},
+        description='Extra model options as JSON, e.g. {"duration": "10"}',
+    )
 
     def resolve_prompt(self, fallback):
         prompt = (self.prompt or fallback).strip()
@@ -33,41 +71,54 @@ class _Generate(bpy.types.Operator):
             self.report({"ERROR"}, "Write a prompt first")
         return prompt
 
+    def choose(self, context, slot_name, with_image, *, use_override=True) -> _ModelChoice:
+        slot = getattr(context.scene.free_plugin, f"{slot_name}_model")
+        if use_override and self.model:
+            entry = catalog.get(slot_name, self.model) or catalog.custom_entry(self.model)
+            options = dict(entry.get("defaults", {}))
+        else:
+            entry = slot.entry()
+            if entry is None:
+                raise RuntimeError("Choose a model (or paste a fal.ai model id)")
+            options = slot.payload()
+        endpoint = catalog.endpoint(entry, with_image)
+        if endpoint is None and not entry.get("provider"):
+            raise RuntimeError(f"{entry['label']} needs an input image")
+        extra = json.loads(self.options) if use_override and self.options else {}
+        return _ModelChoice(entry, endpoint, options, extra)
+
+    def input_image(self, choice_value, path_value):
+        """CAMERA → capture now, FILE → check the path, anything else → None."""
+        if choice_value == "CAMERA":
+            return scene.capture_camera(prefs.output_dir("captures") / _stamp("camera", "png"))
+        if choice_value == "FILE":
+            path = Path(bpy.path.abspath(path_value))
+            if not path.is_file():
+                raise RuntimeError("Choose an existing image file")
+            return path
+        return None
+
 
 class FREEPLUGIN_OT_generate_image(_Generate):
     bl_idname = "freeplugin.generate_image"
     bl_label = "Generate image"
-    bl_description = "Text or image → image with fal.ai (Seedream 4.5 by default, ~$0.04)"
+    bl_description = "Text or image → image with the chosen fal.ai model"
 
     def execute(self, context):
         props = context.scene.free_plugin
         prompt = self.resolve_prompt(props.image_prompt)
         if not prompt:
             return {"CANCELLED"}
-        settings = prefs.get()
-        key = prefs.fal_key()
-        out = prefs.output_dir("images") / _stamp(prompt, "png")
-
-        reference = None
         try:
-            if props.image_reference == "CAMERA":
-                reference = scene.capture_camera(prefs.output_dir("captures") / _stamp("camera", "png"))
-            elif props.image_reference == "FILE":
-                reference = Path(bpy.path.abspath(props.image_reference_path))
-                if not reference.is_file():
-                    raise RuntimeError("Choose an existing reference image")
-        except RuntimeError as error:
+            reference = self.input_image(props.image_reference, props.image_reference_path)
+            choice = self.choose(context, "image", reference is not None)
+        except (RuntimeError, ValueError) as error:
             self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
-
-        model = settings.edit_model if reference else settings.image_model
-        size, placement = props.image_size, props.image_placement
+        key, placement, folder = prefs.fal_key(), props.image_placement, prefs.output_dir("images")
 
         def work(task):
-            uris = [net.data_uri(reference)] if reference else []
-            result = fal.run(model, fal.image_payload(prompt, size, uris), key, task.set)
-            task.set("downloading…")
-            return net.download(fal.first_image_url(result), out)
+            return choice.run(task, key, "image", folder, prompt, prompt=prompt, images=[reference] if reference else [])
 
         def done(task, path):
             image = scene.load_image(path)
@@ -84,7 +135,7 @@ class FREEPLUGIN_OT_generate_image(_Generate):
 class FREEPLUGIN_OT_generate_texture(_Generate):
     bl_idname = "freeplugin.generate_texture"
     bl_label = "Generate material"
-    bl_description = "Generate a seamless texture with fal.ai and apply it to the active object (~$0.04)"
+    bl_description = "Generate a seamless texture with the image model and apply it to the active object"
 
     @classmethod
     def poll(cls, context):
@@ -95,24 +146,22 @@ class FREEPLUGIN_OT_generate_texture(_Generate):
         subject = self.resolve_prompt(props.texture_prompt)
         if not subject:
             return {"CANCELLED"}
-        obj_name = context.active_object.name
-        key, model, tiling = prefs.fal_key(), prefs.get().image_model, props.texture_tiling
-        out = prefs.output_dir("textures") / _stamp(subject, "png")
-        prompt = (f"Seamless tileable PBR albedo texture of {subject}, flat even lighting, "
-                  "no shadows, no perspective, top-down orthographic, edges tile perfectly")
+        try:
+            choice = self.choose(context, "image", False)
+        except (RuntimeError, ValueError) as error:
+            self.report({"ERROR"}, str(error))
+            return {"CANCELLED"}
+        obj_name, tiling = context.active_object.name, props.texture_tiling
+        key, folder = prefs.fal_key(), prefs.output_dir("textures")
 
         def work(task):
-            payload = fal.image_payload(prompt, {"width": 2048, "height": 2048})
-            result = fal.run(model, payload, key, task.set)
-            task.set("downloading…")
-            return net.download(fal.first_image_url(result), out)
+            return choice.run(task, key, "image", folder, subject, prompt=TEXTURE_PROMPT.format(subject), square=True)
 
         def done(task, path):
             obj = bpy.data.objects.get(obj_name)
             if obj is None:
                 return str(path)
-            return scene.build_material(obj, subject[:60], {"base_color": path},
-                                        tiling=tiling, bump_from_color=True)
+            return scene.build_material(obj, subject[:60], {"base_color": path}, tiling=tiling, bump_from_color=True)
 
         tasks.run(f"Texture: {subject[:40]}", work, done)
         return {"FINISHED"}
@@ -121,32 +170,23 @@ class FREEPLUGIN_OT_generate_texture(_Generate):
 class FREEPLUGIN_OT_generate_video(_Generate):
     bl_idname = "freeplugin.generate_video"
     bl_label = "Generate video"
-    bl_description = "Text or camera view → video with fal.ai (Kling 3.0 Pro by default, ~$0.14/s), added to the Video Sequencer"
+    bl_description = "Text or camera view → video with the chosen fal.ai model, added to the Video Sequencer"
 
     def execute(self, context):
         props = context.scene.free_plugin
         prompt = self.resolve_prompt(props.video_prompt)
         if not prompt:
             return {"CANCELLED"}
-        settings = prefs.get()
-        start = None
-        if props.video_source == "CAMERA":
-            try:
-                start = scene.capture_camera(prefs.output_dir("captures") / _stamp("camera", "png"))
-            except RuntimeError as error:
-                self.report({"ERROR"}, str(error))
-                return {"CANCELLED"}
-        model = settings.video_i2v_model if start else settings.video_t2v_model
-        key = prefs.fal_key()
-        duration, aspect, audio = props.video_duration, props.video_aspect, props.video_audio
-        out = prefs.output_dir("videos") / _stamp(prompt, "mp4")
+        try:
+            start = self.input_image(props.video_source, "")
+            choice = self.choose(context, "video", start is not None)
+        except (RuntimeError, ValueError) as error:
+            self.report({"ERROR"}, str(error))
+            return {"CANCELLED"}
+        key, folder = prefs.fal_key(), prefs.output_dir("videos")
 
         def work(task):
-            uri = net.data_uri(start) if start else None
-            payload = fal.video_payload(model, prompt, duration, aspect, audio, uri)
-            result = fal.run(model, payload, key, task.set)
-            task.set("downloading…")
-            return net.download(fal.video_url(result), out)
+            return choice.run(task, key, "video", folder, prompt, prompt=prompt, images=[start] if start else [])
 
         def done(task, path):
             scene.add_movie_strip(path)
@@ -159,43 +199,29 @@ class FREEPLUGIN_OT_generate_video(_Generate):
 class FREEPLUGIN_OT_generate_3d(_Generate):
     bl_idname = "freeplugin.generate_3d"
     bl_label = "Generate 3D model"
-    bl_description = "Text, image or camera view → textured GLB (fal.ai or Meshy), imported at the 3D cursor"
-
-    provider: bpy.props.StringProperty(
-        name="Model", options={"SKIP_SAVE"},
-        description="TRELLIS, TRELLIS2, TRIPO, HUNYUAN or MESHY (empty: the panel's choice)",
-    )
+    bl_description = "Text, image or camera view → textured model, imported at the 3D cursor"
 
     def execute(self, context):
         props = context.scene.free_plugin
-        source = props.mesh_source
         prompt = (self.prompt or props.mesh_prompt).strip()
-        provider = self.provider or props.mesh_provider
-        if provider != "MESHY" and provider not in fal.MODELS_3D:
-            self.report({"ERROR"}, f"Unknown 3D model {provider!r}")
-            return {"CANCELLED"}
-        image = None
         try:
-            if source == "TEXT":
-                if not prompt:
-                    raise RuntimeError("Write a prompt first")
-            elif source == "CAMERA":
-                image = scene.capture_camera(prefs.output_dir("captures") / _stamp("camera", "png"))
-            else:
-                image = Path(bpy.path.abspath(props.mesh_image_path))
-                if not image.is_file():
-                    raise RuntimeError("Choose an existing image")
-        except RuntimeError as error:
+            if props.mesh_source == "TEXT" and not prompt:
+                raise RuntimeError("Write a prompt first")
+            image = self.input_image(props.mesh_source, props.mesh_image_path)
+            choice = self.choose(context, "mesh", image is not None)
+            # Image-only models (TRELLIS…) get a reference picture drawn by the image model.
+            needs_reference = image is None and choice.entry.get("text") is None and not choice.entry.get("provider")
+            reference_choice = self.choose(context, "image", False, use_override=False) if needs_reference else None
+        except (RuntimeError, ValueError) as error:
             self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
-        texture, pbr = props.mesh_texture, props.mesh_pbr
         label = prompt or image.stem
-        out = prefs.output_dir("models") / _stamp(label, "glb")
+        folder = prefs.output_dir("models")
         cursor = context.scene.cursor.location.copy()
 
-        if provider == "MESHY":
-            key = prefs.meshy_key()
+        if choice.entry.get("provider") == "meshy":
+            key, texture, pbr = prefs.meshy_key(), props.mesh_texture, props.mesh_pbr
 
             def work(task):
                 if image:
@@ -203,23 +229,19 @@ class FREEPLUGIN_OT_generate_3d(_Generate):
                 else:
                     result = meshy.text_to_3d(prompt, key, texture=texture, pbr=pbr, progress=task.set)
                 task.set("downloading…")
-                return {"meshy_task_id": result["id"]}, net.download(meshy.glb_url(result), out)
+                return {"meshy_task_id": result["id"]}, net.download(meshy.glb_url(result), folder / _stamp(label, "glb"))
         else:
-            key, spec, image_model = prefs.fal_key(), fal.MODELS_3D[provider], prefs.get().image_model
-            reference = prefs.output_dir("images") / _stamp(label + "-reference", "png")
+            key, images_folder = prefs.fal_key(), prefs.output_dir("images")
 
             def work(task):
-                image_uri = net.data_uri(image) if image else None
-                if image_uri is None and "text" not in spec:
+                source = image
+                if reference_choice is not None:
                     task.set("drawing a reference image…")
-                    result = fal.run(image_model, fal.image_payload(prompt + fal.OBJECT_REFERENCE_SUFFIX, "square_hd"),
-                                     key, task.set)
-                    image_uri = net.data_uri(net.download(fal.first_image_url(result), reference))
-                model = spec["image"] if image_uri else spec["text"]
-                payload = fal.model_3d_payload(spec, prompt=prompt, image_uri=image_uri, pbr=texture and pbr)
-                result = fal.run(model, payload, key, task.set)
-                task.set("downloading…")
-                return {"fal_model": model}, net.download(fal.glb_url(result), out)
+                    source = reference_choice.run(task, key, "image", images_folder, label + "-reference",
+                                                  prompt=prompt + fal.OBJECT_REFERENCE_SUFFIX, square=True)
+                path = choice.run(task, key, "mesh", folder, label,
+                                  prompt=None if source else prompt, images=[source] if source else [])
+                return {"fal_model": choice.endpoint}, path
 
         def done(task, value):
             tag, path = value
@@ -231,6 +253,52 @@ class FREEPLUGIN_OT_generate_3d(_Generate):
             return names
 
         tasks.run(f"3D: {label[:40]}", work, done)
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_load_model(bpy.types.Operator):
+    bl_idname = "freeplugin.load_model"
+    bl_label = "Load model options"
+    bl_description = "Read the model's options from fal.ai"
+
+    slot: bpy.props.StringProperty(options={"SKIP_SAVE"})
+
+    def execute(self, context):
+        from . import params
+
+        if self.slot not in catalog.SLOTS:
+            return {"CANCELLED"}
+        params.sync_slot(context.scene, self.slot, force=True)
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_open_catalog(bpy.types.Operator):
+    bl_idname = "freeplugin.open_catalog"
+    bl_label = "Open my models.json"
+    bl_description = "Add your own models to the menus (same format as the bundled catalog)"
+
+    def execute(self, context):
+        bpy.ops.wm.path_open(filepath=str(catalog.user_catalog_path()))
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_reload_catalog(bpy.types.Operator):
+    bl_idname = "freeplugin.reload_catalog"
+    bl_label = "Reload models"
+    bl_description = "Re-read models.json and refresh the options of every panel"
+
+    clear_cache: bpy.props.BoolProperty(name="Also re-download options", options={"SKIP_SAVE"})
+
+    def execute(self, context):
+        from . import params
+
+        if self.clear_cache:
+            catalog.clear_schema_cache()
+        catalog.reload()
+        for scene_ in bpy.data.scenes:
+            for slot_name in catalog.SLOTS:
+                getattr(scene_.free_plugin, f"{slot_name}_model").loaded = ""
+                params.sync_slot(scene_, slot_name, force=self.clear_cache)
         return {"FINISHED"}
 
 
@@ -459,6 +527,9 @@ classes = (
     FREEPLUGIN_OT_generate_texture,
     FREEPLUGIN_OT_generate_video,
     FREEPLUGIN_OT_generate_3d,
+    FREEPLUGIN_OT_load_model,
+    FREEPLUGIN_OT_open_catalog,
+    FREEPLUGIN_OT_reload_catalog,
     FREEPLUGIN_OT_retexture,
     FREEPLUGIN_OT_rig,
     FREEPLUGIN_OT_polyhaven_search,

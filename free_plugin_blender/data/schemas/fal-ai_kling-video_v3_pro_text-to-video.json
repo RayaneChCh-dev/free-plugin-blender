@@ -1,0 +1,76 @@
+{
+ "id": "fal-ai/kling-video/v3/pro/text-to-video",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "duration",
+   "title": "Duration",
+   "kind": "ENUM",
+   "description": "The duration of the generated video in seconds",
+   "options": [
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15"
+   ],
+   "default": "5"
+  },
+  {
+   "name": "generate_audio",
+   "title": "Generate Audio",
+   "kind": "BOOL",
+   "description": "Whether to generate native audio for the video. Supports Chinese and English voice output. Other languages are automatically translated to English. For English speech, use lowercase letters; for acronyms or proper nouns, use uppercase.",
+   "default": true
+  },
+  {
+   "name": "shot_type",
+   "title": "Shot Type",
+   "kind": "ENUM",
+   "description": "The type of multi-shot video generation. 'intelligent' lets the model automatically determine shot structure.",
+   "options": [
+    "customize",
+    "intelligent"
+   ],
+   "default": "customize"
+  },
+  {
+   "name": "aspect_ratio",
+   "title": "Aspect Ratio",
+   "kind": "ENUM",
+   "description": "The aspect ratio of the generated video frame",
+   "options": [
+    "16:9",
+    "9:16",
+    "1:1"
+   ],
+   "default": "16:9"
+  },
+  {
+   "name": "negative_prompt",
+   "title": "Negative Prompt",
+   "kind": "STRING",
+   "description": "",
+   "default": "blur, distort, and low quality"
+  },
+  {
+   "name": "cfg_scale",
+   "title": "Cfg Scale",
+   "kind": "FLOAT",
+   "description": "\n            The CFG (Classifier Free Guidance) scale is a measure of how close you want\n            the model to stick to your prompt.\n        ",
+   "minimum": 0,
+   "maximum": 1,
+   "default": 0.5
+  }
+ ]
+}

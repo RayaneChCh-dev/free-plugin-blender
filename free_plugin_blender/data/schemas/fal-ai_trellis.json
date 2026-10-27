@@ -1,0 +1,71 @@
+{
+ "id": "fal-ai/trellis",
+ "prompt_field": null,
+ "image_field": "image_url",
+ "image_list": false,
+ "fields": [
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "Random seed for reproducibility"
+  },
+  {
+   "name": "ss_guidance_strength",
+   "title": "Ss Guidance Strength",
+   "kind": "FLOAT",
+   "description": "Guidance strength for sparse structure generation",
+   "minimum": 0,
+   "maximum": 10,
+   "default": 7.5
+  },
+  {
+   "name": "ss_sampling_steps",
+   "title": "Ss Sampling Steps",
+   "kind": "INT",
+   "description": "Sampling steps for sparse structure generation",
+   "minimum": 1,
+   "maximum": 50,
+   "default": 12
+  },
+  {
+   "name": "slat_guidance_strength",
+   "title": "Slat Guidance Strength",
+   "kind": "FLOAT",
+   "description": "Guidance strength for structured latent generation",
+   "minimum": 0,
+   "maximum": 10,
+   "default": 3
+  },
+  {
+   "name": "slat_sampling_steps",
+   "title": "Slat Sampling Steps",
+   "kind": "INT",
+   "description": "Sampling steps for structured latent generation",
+   "minimum": 1,
+   "maximum": 50,
+   "default": 12
+  },
+  {
+   "name": "mesh_simplify",
+   "title": "Mesh Simplify",
+   "kind": "FLOAT",
+   "description": "Mesh simplification factor",
+   "minimum": 0.9,
+   "maximum": 0.98,
+   "default": 0.95
+  },
+  {
+   "name": "texture_size",
+   "title": "Texture Size",
+   "kind": "ENUM",
+   "description": "Texture resolution",
+   "options": [
+    512,
+    1024,
+    2048
+   ],
+   "default": 1024
+  }
+ ]
+}

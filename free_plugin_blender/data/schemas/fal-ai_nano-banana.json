@@ -1,0 +1,67 @@
+{
+ "id": "fal-ai/nano-banana",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "The seed for the random number generator."
+  },
+  {
+   "name": "aspect_ratio",
+   "title": "Aspect Ratio",
+   "kind": "ENUM",
+   "description": "The aspect ratio of the generated image.",
+   "options": [
+    "21:9",
+    "16:9",
+    "3:2",
+    "4:3",
+    "5:4",
+    "1:1",
+    "4:5",
+    "3:4",
+    "2:3",
+    "9:16"
+   ],
+   "default": "1:1"
+  },
+  {
+   "name": "output_format",
+   "title": "Output Format",
+   "kind": "ENUM",
+   "description": "The format of the generated image.",
+   "options": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "default": "png"
+  },
+  {
+   "name": "safety_tolerance",
+   "title": "Safety Tolerance",
+   "kind": "ENUM",
+   "description": "The safety tolerance level for content moderation. 1 is the most strict (blocks most content), 6 is the least strict.",
+   "options": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6"
+   ],
+   "default": "4"
+  },
+  {
+   "name": "limit_generations",
+   "title": "Limit Generations",
+   "kind": "BOOL",
+   "description": "Experimental parameter to limit the number of generations from each round of prompting to 1. Set to `True` to to disregard any instructions in the prompt regarding the number of images to generate.",
+   "default": true
+  }
+ ]
+}

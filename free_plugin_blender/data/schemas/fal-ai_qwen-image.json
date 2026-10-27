@@ -1,0 +1,84 @@
+{
+ "id": "fal-ai/qwen-image",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "image_size",
+   "title": "Image Size",
+   "kind": "ENUM",
+   "description": "The size of the generated image.",
+   "options": [
+    "square_hd",
+    "square",
+    "portrait_4_3",
+    "portrait_16_9",
+    "landscape_4_3",
+    "landscape_16_9"
+   ],
+   "default": "landscape_4_3"
+  },
+  {
+   "name": "num_inference_steps",
+   "title": "Num Inference Steps",
+   "kind": "INT",
+   "description": "The number of inference steps to perform.",
+   "minimum": 2,
+   "maximum": 250,
+   "default": 30
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "\n            The same seed and the same prompt given to the same version of the model\n            will output the same image every time.\n        "
+  },
+  {
+   "name": "guidance_scale",
+   "title": "Guidance scale",
+   "kind": "FLOAT",
+   "description": "\n            The CFG (Classifier Free Guidance) scale is a measure of how close you want\n            the model to stick to your prompt when looking for a related image to show you.\n        ",
+   "minimum": 0,
+   "maximum": 20,
+   "default": 2.5
+  },
+  {
+   "name": "output_format",
+   "title": "Output Format",
+   "kind": "ENUM",
+   "description": "The format of the generated image.",
+   "options": [
+    "jpeg",
+    "png"
+   ],
+   "default": "png"
+  },
+  {
+   "name": "negative_prompt",
+   "title": "Negative Prompt",
+   "kind": "STRING",
+   "description": "The negative prompt for the generation",
+   "default": " "
+  },
+  {
+   "name": "acceleration",
+   "title": "Acceleration",
+   "kind": "ENUM",
+   "description": "Acceleration level for image generation. Options: 'none', 'regular', 'high'. Higher acceleration increases speed. 'regular' balances speed and quality. 'high' is recommended for images without text.",
+   "options": [
+    "none",
+    "regular",
+    "high"
+   ],
+   "default": "none"
+  },
+  {
+   "name": "use_turbo",
+   "title": "Use Turbo",
+   "kind": "BOOL",
+   "description": "Enable turbo mode for faster generation with high quality. When enabled, uses optimized settings (10 steps, CFG=1.2).",
+   "default": false
+  }
+ ]
+}

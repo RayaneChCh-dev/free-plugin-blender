@@ -1,0 +1,76 @@
+{
+ "id": "fal-ai/bytedance/seedance/v1/pro/text-to-video",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "aspect_ratio",
+   "title": "Aspect Ratio",
+   "kind": "ENUM",
+   "description": "The aspect ratio of the generated video",
+   "options": [
+    "21:9",
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "default": "16:9"
+  },
+  {
+   "name": "resolution",
+   "title": "Resolution",
+   "kind": "ENUM",
+   "description": "Video resolution - 480p for faster generation, 720p for balance, 1080p for higher quality",
+   "options": [
+    "480p",
+    "720p",
+    "1080p"
+   ],
+   "default": "1080p"
+  },
+  {
+   "name": "duration",
+   "title": "Duration",
+   "kind": "ENUM",
+   "description": "Duration of the video in seconds",
+   "options": [
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12"
+   ],
+   "default": "5"
+  },
+  {
+   "name": "camera_fixed",
+   "title": "Camera Fixed",
+   "kind": "BOOL",
+   "description": "Whether to fix the camera position",
+   "default": false
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "Random seed to control video generation. Use -1 for random."
+  },
+  {
+   "name": "num_frames",
+   "title": "Num Frames",
+   "kind": "INT",
+   "description": "The number of frames to generate. If provided, will override duration.",
+   "minimum": 29,
+   "maximum": 289
+  }
+ ]
+}

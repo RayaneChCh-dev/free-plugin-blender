@@ -16,6 +16,7 @@ jobs:
           python-version: "3.12"
       - run: python3 -m compileall -q free_plugin_blender
       - run: python3 scripts/build.py
+      - run: python3 -c "import json,glob; [json.load(open(f)) for f in glob.glob('free_plugin_blender/data/**/*.json', recursive=True)]"
       - uses: actions/upload-artifact@v4
         with:
           name: free_plugin_blender

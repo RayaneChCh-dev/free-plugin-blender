@@ -1,0 +1,90 @@
+{
+ "id": "tripo3d/h3.1/text-to-3d",
+ "prompt_field": "prompt",
+ "image_field": null,
+ "image_list": false,
+ "fields": [
+  {
+   "name": "negative_prompt",
+   "title": "Negative Prompt",
+   "kind": "STRING",
+   "description": "Text describing features to avoid in the generated model."
+  },
+  {
+   "name": "face_limit",
+   "title": "Face Limit",
+   "kind": "INT",
+   "description": "Target number of faces for the generated mesh. If not set, the model adaptively determines the count.",
+   "minimum": 1000,
+   "maximum": 2000000
+  },
+  {
+   "name": "texture",
+   "title": "Texture",
+   "kind": "BOOL",
+   "description": "Whether to generate textures for the model.",
+   "default": true
+  },
+  {
+   "name": "pbr",
+   "title": "Pbr",
+   "kind": "BOOL",
+   "description": "Whether to generate PBR (Physically Based Rendering) materials. If true, texture is also enabled.",
+   "default": true
+  },
+  {
+   "name": "model_seed",
+   "title": "Model Seed",
+   "kind": "INT",
+   "description": "Seed for geometry generation reproducibility."
+  },
+  {
+   "name": "image_seed",
+   "title": "Image Seed",
+   "kind": "INT",
+   "description": "Seed for the text-to-image step."
+  },
+  {
+   "name": "texture_seed",
+   "title": "Texture Seed",
+   "kind": "INT",
+   "description": "Seed for texture generation reproducibility."
+  },
+  {
+   "name": "texture_quality",
+   "title": "Texture Quality",
+   "kind": "ENUM",
+   "description": "Quality level for textures. 'detailed' produces higher-resolution textures.",
+   "options": [
+    "standard",
+    "detailed"
+   ],
+   "default": "standard"
+  },
+  {
+   "name": "geometry_quality",
+   "title": "Geometry Quality",
+   "kind": "ENUM",
+   "description": "Quality level for geometry.",
+   "options": [
+    "standard",
+    "detailed"
+   ],
+   "default": "standard"
+  },
+  {
+   "name": "auto_size",
+   "title": "Auto Size",
+   "kind": "BOOL",
+   "description": "Auto-scale the model to real-world dimensions (meters).",
+   "default": false
+  },
+  {
+   "name": "quad",
+   "title": "Quad",
+   "kind": "BOOL",
+   "description": "Generate quad (4-sided) mesh topology instead of triangles. When Tripo emits FBX bytes for quad output, the returned model file is FBX.",
+   "default": false
+  }
+ ]
+}

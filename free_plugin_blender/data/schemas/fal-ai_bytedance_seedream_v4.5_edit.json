@@ -1,0 +1,30 @@
+{
+ "id": "fal-ai/bytedance/seedream/v4.5/edit",
+ "prompt_field": "prompt",
+ "image_field": "image_urls",
+ "image_list": true,
+ "fields": [
+  {
+   "name": "image_size",
+   "title": "Image Size",
+   "kind": "ENUM",
+   "description": "The size of the generated image. Width and height must be between 1920 and 4096, or total number of pixels must be between 2560*1440 and 4096*4096.",
+   "options": [
+    "square_hd",
+    "square",
+    "portrait_4_3",
+    "portrait_16_9",
+    "landscape_4_3",
+    "landscape_16_9",
+    "auto_2K",
+    "auto_4K"
+   ]
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "Random seed to control the stochasticity of image generation."
+  }
+ ]
+}

@@ -4,22 +4,13 @@ from __future__ import annotations
 
 import bpy
 
-from .providers import fal
+from . import params
 
-MESH_PROVIDERS = [
-    (key, f"{spec['label']} {spec['cost']}",
-     "fal.ai" if "text" in spec else "fal.ai, image only: a text prompt is drawn by Seedream first (+$0.04)")
-    for key, spec in fal.MODELS_3D.items()
-] + [("MESHY", "Meshy (own key, credits)", "Meshy API with your own key and credits")]
 
-IMAGE_SIZES = [
-    ("auto_2K", "Auto 2K", ""),
-    ("square_hd", "Square", ""),
-    ("landscape_16_9", "16:9", ""),
-    ("portrait_16_9", "9:16", ""),
-    ("landscape_4_3", "4:3", ""),
-    ("portrait_4_3", "3:4", ""),
-]
+def _source_changed(self, context):
+    # Text vs image input can switch the endpoint, and with it the options.
+    if context is not None and context.scene is not None:
+        params.sync_scene(context.scene)
 
 
 class FreePluginAsset(bpy.types.PropertyGroup):
@@ -27,14 +18,18 @@ class FreePluginAsset(bpy.types.PropertyGroup):
 
 
 class FreePluginProps(bpy.types.PropertyGroup):
+    image_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["image"])
+    video_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["video"])
+    mesh_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["mesh"])
+
     # Image
     image_prompt: bpy.props.StringProperty(name="Prompt")
-    image_size: bpy.props.EnumProperty(name="Size", items=IMAGE_SIZES)
     image_reference: bpy.props.EnumProperty(
         name="Reference",
         items=[("NONE", "None", "Text only"),
                ("CAMERA", "Camera view", "Edit a render of the active camera"),
                ("FILE", "Image file", "Edit an image from disk")],
+        update=_source_changed,
     )
     image_reference_path: bpy.props.StringProperty(name="Image", subtype="FILE_PATH")
     image_placement: bpy.props.EnumProperty(
@@ -42,7 +37,7 @@ class FreePluginProps(bpy.types.PropertyGroup):
         items=[("PLANE", "On a plane", ""), ("CAMERA_BG", "Camera background", ""), ("NONE", "Image only", "")],
     )
 
-    # Texture
+    # Texture (uses the image model)
     texture_prompt: bpy.props.StringProperty(name="Material", default="weathered sandstone wall")
     texture_tiling: bpy.props.FloatProperty(name="Tiling", default=1.0, min=0.01, soft_max=20.0)
 
@@ -51,23 +46,19 @@ class FreePluginProps(bpy.types.PropertyGroup):
     video_source: bpy.props.EnumProperty(
         name="Start from",
         items=[("CAMERA", "Camera view", "Animate a render of the active camera"), ("TEXT", "Text only", "")],
+        update=_source_changed,
     )
-    video_duration: bpy.props.IntProperty(name="Seconds", default=5, min=3, max=15)
-    video_aspect: bpy.props.EnumProperty(
-        name="Aspect", items=[("16:9", "16:9", ""), ("9:16", "9:16", ""), ("1:1", "1:1", "")]
-    )
-    video_audio: bpy.props.BoolProperty(name="Audio", default=False)
 
     # 3D
-    mesh_provider: bpy.props.EnumProperty(name="Model", items=MESH_PROVIDERS)
     mesh_prompt: bpy.props.StringProperty(name="Prompt")
     mesh_source: bpy.props.EnumProperty(
         name="From",
         items=[("TEXT", "Text", ""), ("FILE", "Image file", ""), ("CAMERA", "Camera view", "")],
+        update=_source_changed,
     )
     mesh_image_path: bpy.props.StringProperty(name="Image", subtype="FILE_PATH")
-    mesh_texture: bpy.props.BoolProperty(name="Texture", default=True)
-    mesh_pbr: bpy.props.BoolProperty(name="PBR maps", default=True)
+    mesh_texture: bpy.props.BoolProperty(name="Texture", default=True, description="Meshy only")
+    mesh_pbr: bpy.props.BoolProperty(name="PBR maps", default=True, description="Meshy only")
     retexture_prompt: bpy.props.StringProperty(name="Style")
     rig_provider: bpy.props.EnumProperty(
         name="Rig with",
@@ -91,7 +82,7 @@ class FreePluginProps(bpy.types.PropertyGroup):
     remesh_voxel: bpy.props.FloatProperty(name="Voxel size", default=0.02, min=0.001, soft_max=0.5, unit="LENGTH")
 
 
-classes = (FreePluginAsset, FreePluginProps)
+classes = (*params.classes, FreePluginAsset, FreePluginProps)
 
 
 def register():
