@@ -1,0 +1,26 @@
+"""Free Plugin Blender: generation with your own keys (fal.ai, Meshy) + free Poly Haven.
+
+AI control of Blender is left to an MCP add-on (Blender Lab's "MCP" extension)
+driven by Claude Code; every feature here is a `bpy.ops.freeplugin.*` operator
+that such a client can call.
+"""
+
+import bpy
+
+from . import operators, panels, prefs, props, tasks
+
+_classes = (prefs.FreePluginPreferences, *operators.classes, *panels.classes)
+
+
+def register():
+    props.register()
+    for cls in _classes:
+        bpy.utils.register_class(cls)
+    tasks.register()
+
+
+def unregister():
+    tasks.unregister()
+    for cls in reversed(_classes):
+        bpy.utils.unregister_class(cls)
+    props.unregister()
