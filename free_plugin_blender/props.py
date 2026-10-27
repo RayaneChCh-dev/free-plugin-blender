@@ -4,6 +4,14 @@ from __future__ import annotations
 
 import bpy
 
+from .providers import fal
+
+MESH_PROVIDERS = [
+    (key, f"{spec['label']} {spec['cost']}",
+     "fal.ai" if "text" in spec else "fal.ai, image only: a text prompt is drawn by Seedream first (+$0.04)")
+    for key, spec in fal.MODELS_3D.items()
+] + [("MESHY", "Meshy (own key, credits)", "Meshy API with your own key and credits")]
+
 IMAGE_SIZES = [
     ("auto_2K", "Auto 2K", ""),
     ("square_hd", "Square", ""),
@@ -51,6 +59,7 @@ class FreePluginProps(bpy.types.PropertyGroup):
     video_audio: bpy.props.BoolProperty(name="Audio", default=False)
 
     # 3D
+    mesh_provider: bpy.props.EnumProperty(name="Model", items=MESH_PROVIDERS)
     mesh_prompt: bpy.props.StringProperty(name="Prompt")
     mesh_source: bpy.props.EnumProperty(
         name="From",
@@ -60,11 +69,16 @@ class FreePluginProps(bpy.types.PropertyGroup):
     mesh_texture: bpy.props.BoolProperty(name="Texture", default=True)
     mesh_pbr: bpy.props.BoolProperty(name="PBR maps", default=True)
     retexture_prompt: bpy.props.StringProperty(name="Style")
+    rig_provider: bpy.props.EnumProperty(
+        name="Rig with",
+        items=[("FAL", "Meshy rig on fal.ai ≈ $0.20", "Pay per use"),
+               ("MESHY", "Meshy (own key, credits)", "")],
+    )
     rig_height: bpy.props.FloatProperty(name="Height (m)", default=1.7, min=0.1, max=10.0)
 
     # Poly Haven
     ph_kind: bpy.props.EnumProperty(
-        name="Type", items=[("hdris", "HDRI", ""), ("textures", "Texture", "")]
+        name="Type", items=[("hdris", "HDRI", ""), ("textures", "Texture", ""), ("models", "Model", "")]
     )
     ph_query: bpy.props.StringProperty(name="Search", default="")
     ph_resolution: bpy.props.EnumProperty(

@@ -5,6 +5,7 @@ from __future__ import annotations
 import bpy
 
 from . import prefs, tasks
+from .providers import fal
 
 
 class _Panel(bpy.types.Panel):
@@ -15,7 +16,8 @@ class _Panel(bpy.types.Panel):
 
 class FREEPLUGIN_UL_assets(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_prop, index=0):
-        layout.label(text=item.name, icon="WORLD" if data.ph_kind == "hdris" else "TEXTURE")
+        icon = {"hdris": "WORLD", "textures": "TEXTURE", "models": "MESH_MONKEY"}[data.ph_kind]
+        layout.label(text=item.name, icon=icon)
 
 
 class FREEPLUGIN_PT_main(_Panel):
@@ -26,8 +28,8 @@ class FREEPLUGIN_PT_main(_Panel):
         col = layout.column(align=True)
         col.label(text="fal.ai: " + ("ready" if prefs.fal_key() else "no key"),
                   icon="CHECKMARK" if prefs.fal_key() else "ERROR")
-        col.label(text="Meshy: " + ("ready" if prefs.meshy_key() else "no key"),
-                  icon="CHECKMARK" if prefs.meshy_key() else "ERROR")
+        col.label(text="Meshy: " + ("ready" if prefs.meshy_key() else "optional, no key"),
+                  icon="CHECKMARK" if prefs.meshy_key() else "DOT")
         col.label(text="Poly Haven: free", icon="CHECKMARK")
         row = layout.row(align=True)
         row.operator("preferences.addon_show", text="Keys", icon="PREFERENCES").module = prefs.ADDON_ID
@@ -87,31 +89,42 @@ class FREEPLUGIN_PT_video(_Panel):
 
 
 class FREEPLUGIN_PT_model(_Panel):
-    bl_label = "3D (Meshy)"
+    bl_label = "3D"
     bl_parent_id = "FREEPLUGIN_PT_main"
     bl_options = {"DEFAULT_CLOSED"}
 
     def draw(self, context):
         props = context.scene.free_plugin
         layout = self.layout
+        layout.prop(props, "mesh_provider", text="")
+        spec = fal.MODELS_3D.get(props.mesh_provider)
         layout.prop(props, "mesh_source", expand=True)
         if props.mesh_source == "TEXT":
             layout.prop(props, "mesh_prompt", text="")
+            if spec and "text" not in spec:
+                layout.label(text="Via a Seedream image (+$0.04)", icon="INFO")
         elif props.mesh_source == "FILE":
             layout.prop(props, "mesh_image_path", text="")
-        row = layout.row()
-        row.prop(props, "mesh_texture")
-        sub = row.row()
-        sub.enabled = props.mesh_texture
-        sub.prop(props, "mesh_pbr")
+        if spec is None or "pbr_field" in spec:
+            row = layout.row()
+            row.prop(props, "mesh_texture")
+            sub = row.row()
+            sub.enabled = props.mesh_texture
+            sub.prop(props, "mesh_pbr")
         layout.operator("freeplugin.generate_3d", icon="MESH_MONKEY")
 
         layout.separator()
-        layout.label(text="On the active object")
-        layout.prop(props, "retexture_prompt", text="Style")
-        layout.operator("freeplugin.retexture", icon="BRUSH_DATA")
+        layout.label(text="Rig the active character")
+        layout.prop(props, "rig_provider", text="")
         layout.prop(props, "rig_height")
         layout.operator("freeplugin.rig", icon="ARMATURE_DATA")
+
+        layout.separator()
+        layout.label(text="Retexture the active object (Meshy key)")
+        col = layout.column()
+        col.enabled = bool(prefs.meshy_key())
+        col.prop(props, "retexture_prompt", text="Style")
+        col.operator("freeplugin.retexture", icon="BRUSH_DATA")
 
 
 class FREEPLUGIN_PT_polyhaven(_Panel):

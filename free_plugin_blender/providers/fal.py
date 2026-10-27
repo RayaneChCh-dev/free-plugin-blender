@@ -19,6 +19,37 @@ VIDEO_T2V_MODEL = "fal-ai/kling-video/v3/pro/text-to-video"
 VIDEO_I2V_MODEL = "fal-ai/kling-video/v3/pro/image-to-video"
 
 
+# 3D generators, all billed per request on fal.ai (prices from fal.ai, October 2026).
+# A model without a "text" endpoint is fed an image generated first from the prompt.
+MODELS_3D = {
+    "TRELLIS": {
+        "label": "TRELLIS", "cost": "≈ $0.02",
+        "image": "fal-ai/trellis", "image_field": "image_url",
+    },
+    "TRELLIS2": {
+        "label": "TRELLIS 2", "cost": "≈ $0.30",
+        "image": "fal-ai/trellis-2", "image_field": "image_url",
+    },
+    "TRIPO": {
+        "label": "Tripo H3.1", "cost": "≈ $0.30",
+        "text": "tripo3d/h3.1/text-to-3d", "image": "tripo3d/h3.1/image-to-3d",
+        "image_field": "image_url", "pbr_field": "pbr",
+    },
+    "HUNYUAN": {
+        "label": "Hunyuan3D 3.1 Pro", "cost": "≈ $0.38 (+$0.15 PBR)",
+        "text": "fal-ai/hunyuan-3d/v3.1/pro/text-to-3d", "image": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+        "image_field": "input_image_url", "pbr_field": "enable_pbr",
+    },
+}
+RIG_MODEL = "fal-ai/meshy/rigging"  # ≈ $0.20, returns walk/run clips too
+
+# Turns a prompt into a clean reference picture for image-only 3D models.
+OBJECT_REFERENCE_SUFFIX = (
+    ", single object, centered, full view, three-quarter angle, plain white background, "
+    "soft even studio lighting, no shadows, 3D asset reference"
+)
+
+
 def run(model_id, payload, key, progress=None, timeout=1800):
     if not key:
         raise ApiError("No fal.ai key: set it in Preferences > Add-ons > Free Plugin Blender, or FAL_KEY")
@@ -64,6 +95,37 @@ def first_image_url(result):
     if not images:
         raise ApiError(f"fal.ai returned no image: {str(result)[:300]}")
     return images[0]["url"]
+
+
+def model_3d_payload(spec, *, prompt=None, image_uri=None, pbr=True):
+    payload = {spec["image_field"]: image_uri} if image_uri else {"prompt": prompt}
+    if "pbr_field" in spec:
+        payload[spec["pbr_field"]] = pbr
+    return payload
+
+
+def glb_url(result):
+    """The GLB link; 3D models on fal name it differently."""
+    urls = result.get("model_urls") or {}
+    candidates = [(result.get("model_glb") or {}).get("url"),
+                  (urls.get("glb") or {}).get("url"),
+                  (result.get("model_mesh") or {}).get("url")]
+    for url in candidates:
+        if url and url.split("?")[0].lower().endswith(".glb"):
+            return url
+    for url in candidates:
+        if url:
+            return url
+    raise ApiError(f"fal.ai returned no 3D model: {str(result)[:300]}")
+
+
+def rig_urls(result):
+    """[rigged character, walking, running] GLB links (the clips may be missing)."""
+    rigged = (result.get("rigged_character_glb") or {}).get("url")
+    if not rigged:
+        raise ApiError(f"fal.ai returned no rigged model: {str(result)[:300]}")
+    clips = result.get("basic_animations") or {}
+    return [rigged] + [(clips.get(name) or {}).get("url") for name in ("walking_glb", "running_glb")]
 
 
 def video_url(result):

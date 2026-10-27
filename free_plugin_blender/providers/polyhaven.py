@@ -1,4 +1,4 @@
-"""Poly Haven: free CC0 HDRIs and PBR textures, no key needed.
+"""Poly Haven: free CC0 HDRIs, PBR textures and 3D models, no key needed.
 
 API: https://api.polyhaven.com — /assets?t=<type> lists everything,
 /files/<id> gives download URLs per map, resolution and format.
@@ -21,7 +21,7 @@ TEXTURE_MAPS = {
 
 
 def search(kind, query="", limit=40):
-    """kind is "hdris" or "textures". Returns [(id, name)] sorted by popularity."""
+    """kind is "hdris", "textures" or "models". Returns [(id, name)] sorted by popularity."""
     if kind not in _assets_cache:
         _assets_cache[kind] = request_json("GET", f"{API}/assets?t={kind}")
     words = [w for w in query.lower().split() if w]
@@ -48,6 +48,17 @@ def hdri_url(asset_id, resolution="2k"):
     if not url:
         raise ApiError(f"No HDRI file for {asset_id}")
     return url
+
+
+def model_files(asset_id, resolution="1k"):
+    """(gltf url, {relative path: url}) — the .gltf needs its .bin and textures beside it."""
+    files = request_json("GET", f"{API}/files/{asset_id}")
+    by_res = files.get("gltf", {})
+    if not by_res:
+        raise ApiError(f"No glTF file for {asset_id}")
+    res = resolution if resolution in by_res else sorted(by_res, key=lambda r: int(r[:-1]))[0]
+    entry = by_res[res]["gltf"]
+    return entry["url"], {path: info["url"] for path, info in entry.get("include", {}).items()}
 
 
 def texture_urls(asset_id, resolution="2k"):

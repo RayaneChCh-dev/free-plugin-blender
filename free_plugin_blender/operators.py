@@ -159,12 +159,21 @@ class FREEPLUGIN_OT_generate_video(_Generate):
 class FREEPLUGIN_OT_generate_3d(_Generate):
     bl_idname = "freeplugin.generate_3d"
     bl_label = "Generate 3D model"
-    bl_description = "Text, image or camera view → textured GLB with Meshy, imported at the 3D cursor"
+    bl_description = "Text, image or camera view → textured GLB (fal.ai or Meshy), imported at the 3D cursor"
+
+    provider: bpy.props.StringProperty(
+        name="Model", options={"SKIP_SAVE"},
+        description="TRELLIS, TRELLIS2, TRIPO, HUNYUAN or MESHY (empty: the panel's choice)",
+    )
 
     def execute(self, context):
         props = context.scene.free_plugin
         source = props.mesh_source
         prompt = (self.prompt or props.mesh_prompt).strip()
+        provider = self.provider or props.mesh_provider
+        if provider != "MESHY" and provider not in fal.MODELS_3D:
+            self.report({"ERROR"}, f"Unknown 3D model {provider!r}")
+            return {"CANCELLED"}
         image = None
         try:
             if source == "TEXT":
@@ -180,22 +189,41 @@ class FREEPLUGIN_OT_generate_3d(_Generate):
             self.report({"ERROR"}, str(error))
             return {"CANCELLED"}
 
-        key, texture, pbr = prefs.meshy_key(), props.mesh_texture, props.mesh_pbr
+        texture, pbr = props.mesh_texture, props.mesh_pbr
         label = prompt or image.stem
         out = prefs.output_dir("models") / _stamp(label, "glb")
         cursor = context.scene.cursor.location.copy()
 
-        def work(task):
-            if image:
-                result = meshy.image_to_3d(net.data_uri(image), key, texture=texture, pbr=pbr, progress=task.set)
-            else:
-                result = meshy.text_to_3d(prompt, key, texture=texture, pbr=pbr, progress=task.set)
-            task.set("downloading…")
-            return result["id"], net.download(meshy.glb_url(result), out)
+        if provider == "MESHY":
+            key = prefs.meshy_key()
+
+            def work(task):
+                if image:
+                    result = meshy.image_to_3d(net.data_uri(image), key, texture=texture, pbr=pbr, progress=task.set)
+                else:
+                    result = meshy.text_to_3d(prompt, key, texture=texture, pbr=pbr, progress=task.set)
+                task.set("downloading…")
+                return {"meshy_task_id": result["id"]}, net.download(meshy.glb_url(result), out)
+        else:
+            key, spec, image_model = prefs.fal_key(), fal.MODELS_3D[provider], prefs.get().image_model
+            reference = prefs.output_dir("images") / _stamp(label + "-reference", "png")
+
+            def work(task):
+                image_uri = net.data_uri(image) if image else None
+                if image_uri is None and "text" not in spec:
+                    task.set("drawing a reference image…")
+                    result = fal.run(image_model, fal.image_payload(prompt + fal.OBJECT_REFERENCE_SUFFIX, "square_hd"),
+                                     key, task.set)
+                    image_uri = net.data_uri(net.download(fal.first_image_url(result), reference))
+                model = spec["image"] if image_uri else spec["text"]
+                payload = fal.model_3d_payload(spec, prompt=prompt, image_uri=image_uri, pbr=texture and pbr)
+                result = fal.run(model, payload, key, task.set)
+                task.set("downloading…")
+                return {"fal_model": model}, net.download(fal.glb_url(result), out)
 
         def done(task, value):
-            task_id, path = value
-            names = scene.import_glb(path, {"meshy_task_id": task_id})
+            tag, path = value
+            names = scene.import_glb(path, tag)
             for name in names:
                 obj = bpy.data.objects[name]
                 if obj.parent is None:
@@ -213,14 +241,15 @@ class _MeshyOnActive(_Generate):
 
     def model_source(self, context):
         """(input_task_id, glb_path): reuse the Meshy task when the object came from Meshy."""
+        task_id = context.active_object.get("meshy_task_id")
+        return (task_id, None) if task_id else (None, self.export_active(context))
+
+    def export_active(self, context):
         obj = context.active_object
-        task_id = obj.get("meshy_task_id")
-        if task_id:
-            return task_id, None
         for other in context.selected_objects:
             other.select_set(False)
         obj.select_set(True)
-        return None, scene.export_selected_glb(prefs.output_dir("exports") / _stamp(obj.name, "glb"))
+        return scene.export_selected_glb(prefs.output_dir("exports") / _stamp(obj.name, "glb"))
 
 
 class FREEPLUGIN_OT_retexture(_MeshyOnActive):
@@ -250,25 +279,33 @@ class FREEPLUGIN_OT_retexture(_MeshyOnActive):
 
 class FREEPLUGIN_OT_rig(_MeshyOnActive):
     bl_idname = "freeplugin.rig"
-    bl_label = "Auto-rig with Meshy"
-    bl_description = "Rig the active humanoid (facing +Z in GLB, i.e. -Y in Blender) and import it with walk/run clips"
+    bl_label = "Auto-rig"
+    bl_description = ("Rig the active humanoid with Meshy (on fal.ai or with your own key) "
+                      "and import it with walk/run clips. The character must face -Y in Blender")
 
     def execute(self, context):
-        task_id, glb = self.model_source(context)
-        key, height = prefs.meshy_key(), context.scene.free_plugin.rig_height
+        props = context.scene.free_plugin
+        on_fal = props.rig_provider == "FAL"
+        # fal.ai cannot see our Meshy tasks, so it always gets the mesh itself.
+        task_id, glb = (None, self.export_active(context)) if on_fal else self.model_source(context)
+        fal_key, meshy_key, height = prefs.fal_key(), prefs.meshy_key(), props.rig_height
         folder = prefs.output_dir("rigs")
         name = context.active_object.name
 
         def work(task):
             uri = net.data_uri(glb, "application/octet-stream") if glb else None
-            result = meshy.rig(key, input_task_id=task_id, model_uri=uri, height_meters=height, progress=task.set)
-            urls = result.get("result") or {}
-            files = [net.download(urls["rigged_character_glb_url"], folder / _stamp(name + "-rigged", "glb"))]
-            for clip in ("walking_glb_url", "running_glb_url"):
-                url = (urls.get("basic_animations") or {}).get(clip)
-                if url:
-                    files.append(net.download(url, folder / _stamp(f"{name}-{clip.split('_')[0]}", "glb")))
-            return files
+            if on_fal:
+                result = fal.run(fal.RIG_MODEL, {"model_url": uri, "height_meters": height}, fal_key, task.set)
+                urls = fal.rig_urls(result)
+            else:
+                result = meshy.rig(meshy_key, input_task_id=task_id, model_uri=uri,
+                                   height_meters=height, progress=task.set)
+                payload = result.get("result") or {}
+                clips = payload.get("basic_animations") or {}
+                urls = [payload["rigged_character_glb_url"], clips.get("walking_glb_url"), clips.get("running_glb_url")]
+            task.set("downloading…")
+            return [net.download(url, folder / _stamp(f"{name}-{suffix}", "glb"))
+                    for url, suffix in zip(urls, ("rigged", "walking", "running")) if url]
 
         def done(task, files):
             return [n for path in files for n in scene.import_glb(path)]
@@ -280,7 +317,7 @@ class FREEPLUGIN_OT_rig(_MeshyOnActive):
 class FREEPLUGIN_OT_polyhaven_search(bpy.types.Operator):
     bl_idname = "freeplugin.polyhaven_search"
     bl_label = "Search Poly Haven"
-    bl_description = "Search free CC0 HDRIs and textures"
+    bl_description = "Search free CC0 HDRIs, textures and 3D models"
 
     def execute(self, context):
         props = context.scene.free_plugin
@@ -302,7 +339,7 @@ class FREEPLUGIN_OT_polyhaven_search(bpy.types.Operator):
 class FREEPLUGIN_OT_polyhaven_apply(bpy.types.Operator):
     bl_idname = "freeplugin.polyhaven_apply"
     bl_label = "Apply"
-    bl_description = "HDRI → world lighting, texture → material on the active object"
+    bl_description = "HDRI → world lighting, texture → material on the active object, model → imported at the 3D cursor"
 
     asset_id: bpy.props.StringProperty(options={"SKIP_SAVE"})
     kind: bpy.props.StringProperty(options={"SKIP_SAVE"})
@@ -324,6 +361,27 @@ class FREEPLUGIN_OT_polyhaven_apply(bpy.types.Operator):
                 return net.download(url, folder / url.rsplit("/", 1)[-1])
 
             tasks.run(f"HDRI: {asset_id}", work, lambda task, path: scene.set_world_hdri(path))
+            return {"FINISHED"}
+
+        if kind == "models":
+            cursor = context.scene.cursor.location.copy()
+
+            def work(task):
+                gltf_url, includes = polyhaven.model_files(asset_id, res)
+                for relative, url in includes.items():
+                    task.set(f"downloading {relative}…")
+                    net.download(url, folder / relative)
+                return net.download(gltf_url, folder / gltf_url.rsplit("/", 1)[-1])
+
+            def done(task, path):
+                names = scene.import_glb(path, {"polyhaven_id": asset_id})
+                for name in names:
+                    obj = bpy.data.objects[name]
+                    if obj.parent is None:
+                        obj.location = cursor
+                return names
+
+            tasks.run(f"Model: {asset_id}", work, done)
             return {"FINISHED"}
 
         obj = context.active_object

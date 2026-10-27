@@ -20,7 +20,7 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         description="From https://fal.ai/dashboard/keys (env var FAL_KEY also works)",
     )
     meshy_key: bpy.props.StringProperty(
-        name="Meshy key", subtype="PASSWORD",
+        name="Meshy key (optional)", subtype="PASSWORD",
         description="From https://www.meshy.ai/settings/api (env var MESHY_API_KEY also works)",
     )
     image_model: bpy.props.StringProperty(name="Text → image", default=fal.IMAGE_MODEL)

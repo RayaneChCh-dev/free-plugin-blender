@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "free_plugin_blender"
-version = "0.1.0"
+version = "0.2.0"
 name = "Free Plugin Blender"
 tagline = "Generate images, video, 3D and textures with your own API keys"
 maintainer = "free-plugin-blender contributors"
@@ -14,7 +14,7 @@ blender_version_min = "4.2.0"
 license = ["SPDX:GPL-3.0-or-later"]
 
 [permissions]
-network = "Call fal.ai, Meshy and Poly Haven with your own API keys"
+network = "Call fal.ai, Poly Haven and optionally Meshy with your own API keys"
 files = "Save generated media and import it into the scene"
 
 [build]
