@@ -21,6 +21,19 @@ def capture_camera(path: Path) -> Path:
     return path
 
 
+def render_scene(path: Path) -> Path:
+    """A full render of the active camera with the scene's engine (like F12), saved as PNG.
+
+    Blender is busy until the render is done: seconds with EEVEE, longer with Cycles.
+    """
+    scene = bpy.context.scene
+    if scene.camera is None:
+        raise RuntimeError("The scene has no active camera")
+    bpy.ops.render.render(write_still=False)
+    bpy.data.images["Render Result"].save_render(str(path), scene=scene)
+    return path
+
+
 def export_selected_glb(path: Path) -> Path:
     bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=True)
     return path

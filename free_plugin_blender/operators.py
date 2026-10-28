@@ -92,9 +92,11 @@ class _Generate(bpy.types.Operator):
                             ui_controls.get_choices(context.scene, slot_name))
 
     def input_image(self, choice_value, path_value):
-        """CAMERA → capture now, FILE → check the path, anything else → None."""
+        """CAMERA → viewport render of the camera, RENDER → full render, FILE → check the path, else None."""
         if choice_value == "CAMERA":
             return scene.capture_camera(prefs.output_dir("captures") / _stamp("camera", "png"))
+        if choice_value == "RENDER":
+            return scene.render_scene(prefs.output_dir("captures") / _stamp("render", "png"))
         if choice_value == "FILE":
             path = Path(bpy.path.abspath(path_value))
             if not path.is_file():

@@ -60,7 +60,8 @@ class FreePluginProps(bpy.types.PropertyGroup):
         name="Reference",
         items=[("NONE", "None", "Text only"),
                ("CAMERA", "Camera view", "Edit a render of the active camera"),
-               ("FILE", "Image file", "Edit an image from disk")],
+               ("FILE", "Image file", "Edit an image from disk"),
+               ("RENDER", "Render scene", "Render the scene with its engine, like F12, and start from that")],
         update=_source_changed,
     )
     image_reference_path: bpy.props.StringProperty(name="Image", subtype="FILE_PATH")
@@ -77,7 +78,8 @@ class FreePluginProps(bpy.types.PropertyGroup):
     video_prompt: bpy.props.StringProperty(name="Prompt")
     video_source: bpy.props.EnumProperty(
         name="Start from",
-        items=[("CAMERA", "Camera view", "Animate a render of the active camera"), ("TEXT", "Text only", "")],
+        items=[("CAMERA", "Camera view", "Animate a render of the active camera"), ("TEXT", "Text only", ""),
+               ("RENDER", "Render scene", "Render the scene with its engine, like F12, and start from that")],
         update=_source_changed,
     )
 
@@ -85,7 +87,8 @@ class FreePluginProps(bpy.types.PropertyGroup):
     mesh_prompt: bpy.props.StringProperty(name="Prompt")
     mesh_source: bpy.props.EnumProperty(
         name="From",
-        items=[("TEXT", "Text", ""), ("FILE", "Image file", ""), ("CAMERA", "Camera view", "")],
+        items=[("TEXT", "Text", ""), ("FILE", "Image file", ""), ("CAMERA", "Camera view", ""),
+               ("RENDER", "Render scene", "Render the scene with its engine, like F12, and start from that")],
         update=_source_changed,
     )
     mesh_image_path: bpy.props.StringProperty(name="Image", subtype="FILE_PATH")
