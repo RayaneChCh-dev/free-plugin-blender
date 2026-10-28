@@ -58,7 +58,8 @@ class _Generate(bpy.types.Operator):
     prompt: bpy.props.StringProperty(name="Prompt", options={"SKIP_SAVE"})
     model: bpy.props.StringProperty(
         name="Model", options={"SKIP_SAVE"},
-        description="Catalog key (e.g. seedream45, kling3_pro, trellis) or any fal.ai model id; empty: the panel's choice",
+        description="Catalog key (e.g. seedream45, kling3_pro, trellis) or any fal.ai model id; "
+                    "empty: the panel's choice",
     )
     options: bpy.props.StringProperty(
         name="Options", options={"SKIP_SAVE"},
@@ -118,7 +119,8 @@ class FREEPLUGIN_OT_generate_image(_Generate):
         key, placement, folder = prefs.fal_key(), props.image_placement, prefs.output_dir("images")
 
         def work(task):
-            return choice.run(task, key, "image", folder, prompt, prompt=prompt, images=[reference] if reference else [])
+            images = [reference] if reference else []
+            return choice.run(task, key, "image", folder, prompt, prompt=prompt, images=images)
 
         def done(task, path):
             image = scene.load_image(path)
@@ -229,7 +231,8 @@ class FREEPLUGIN_OT_generate_3d(_Generate):
                 else:
                     result = meshy.text_to_3d(prompt, key, texture=texture, pbr=pbr, progress=task.set)
                 task.set("downloading…")
-                return {"meshy_task_id": result["id"]}, net.download(meshy.glb_url(result), folder / _stamp(label, "glb"))
+                path = net.download(meshy.glb_url(result), folder / _stamp(label, "glb"))
+                return {"meshy_task_id": result["id"]}, path
         else:
             key, images_folder = prefs.fal_key(), prefs.output_dir("images")
 

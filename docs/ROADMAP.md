@@ -1,0 +1,43 @@
+# Roadmap
+
+Each phase ships as one or more `feat/…` pull requests (see the `feature-pr` skill).
+
+## Phase 0: how we work (this PR)
+
+- `feature-pr` skill: branch `feat/<feature>` from main → tests → PR to main → PR
+  checked and green before the next feature.
+- CI on every PR: `lint` (ruff), `unit-tests` (pytest, no Blender), `blender-tests`
+  (headless Blender 5.2 LTS: build, `extension validate`, install, run `tests/blender`).
+- CD: pushing a tag `vX.Y.Z` on main publishes the GitHub release with the zip.
+- `main` protected: pull request and passing checks required, admins included.
+
+Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the same flow.
+
+## Phase 1: Claude models and effort
+
+- Precise model menu: Fable 5.1, Opus 5.5, Opus 5, Sonnet 5.5, Sonnet 5, Haiku 5.5
+  (`claude --model <id>`).
+- Effort Low / Medium / High / XHigh / Max (`claude --effort`), **Medium by default**.
+
+## Phase 2: simple controls per mode, Animation tab
+
+- Viewport bar chips mapped to each model's own fields (declared in `models.json`);
+  a control the model does not support is shown greyed out. Raw options stay under "Advanced".
+  - Image: format, aspect ratio, quality (Low/Medium/High), resolution, count.
+  - 3D: mode (preview / full), model type (standard / low-poly / smart topology),
+    topology (tris / quads), face count, PBR, texture resolution.
+  - Video: duration, ratio, resolution, audio.
+- Animation tab: presets first (Meshy rigging + animation library on fal.ai), and a
+  free text → motion option (`fal-ai/hunyuan-motion`) retargeted onto the character.
+
+## Phase 3: our own local MCP server
+
+- Typed high-level tools (scene summary, primitives, materials, render, screenshot,
+  generation, Poly Haven, Python as a last resort), the idea behind Higgsfield's bridge
+  without the cloud relay. Removes the `mcp-for-blender` dependency and the shared port.
+
+## Phase 4: other providers with an API key
+
+- Agent loop inside the plugin using the Phase 3 tools: Anthropic (API key), OpenAI,
+  Gemini, DeepSeek; then OpenRouter and a local server (Ollama).
+- Model lists read live from each provider; effort mapped per provider, Medium by default.

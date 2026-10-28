@@ -22,7 +22,8 @@ from fpb.providers import fal_schema  # noqa: E402
 
 def main() -> int:
     catalog = json.loads((PKG / "data" / "models.json").read_text())
-    ids = sorted({e[k] for slot in ("image", "video", "mesh") for e in catalog.get(slot, []) for k in ("text", "image") if k in e})
+    entries = [e for slot in ("image", "video", "mesh") for e in catalog.get(slot, [])]
+    ids = sorted({e[k] for e in entries for k in ("text", "image") if k in e})
     out = PKG / "data" / "schemas"
     out.mkdir(parents=True, exist_ok=True)
     failures = 0

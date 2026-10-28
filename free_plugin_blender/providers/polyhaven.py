@@ -27,7 +27,8 @@ def search(kind, query="", limit=40):
     words = [w for w in query.lower().split() if w]
     hits = []
     for asset_id, info in _assets_cache[kind].items():
-        haystack = " ".join([asset_id, info.get("name", ""), *info.get("tags", []), *info.get("categories", [])]).lower()
+        words_of_asset = [asset_id, info.get("name", ""), *info.get("tags", []), *info.get("categories", [])]
+        haystack = " ".join(words_of_asset).lower()
         if all(w in haystack for w in words):
             hits.append((info.get("download_count", 0), asset_id, info.get("name", asset_id)))
     hits.sort(reverse=True)
