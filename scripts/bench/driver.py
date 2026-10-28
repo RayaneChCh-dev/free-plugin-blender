@@ -12,6 +12,7 @@ import traceback
 
 import addon_utils
 import bpy
+from mathutils import Vector
 
 MODULE = "bl_ext.user_default.free_plugin_blender"
 MCP_PORT = 9877  # never 9876: the user's own Blender listens there
@@ -26,16 +27,31 @@ TASKS = {
             "and framing could be improved. Do not change anything.",
     "assets": "Use free Poly Haven assets: a sunset HDRI for the world, and two models, a wooden chair and a "
               "potted plant, placed 2 m apart on the ground.",
+    # Free check that a tool call may last longer than Claude Code's default 60 s.
+    "slow": "Call run_script once with exactly this code: import time; time.sleep(75); print('slept 75') "
+            "and tell me what it printed.",
+    # Paid (fal.ai, about $0.02): needs FAL_KEY, see bench_mcp_modes.py --fal-key-from-prefs.
+    "generate": "Generate a 3D model of a small ceramic teapot with the cheapest 3D model, then place it "
+                "standing on top of the cube.",
 }
 
 
-def scene_check(task):
+def scene_check(task, answer=""):
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
     materials = {s.material.name for o in meshes for s in o.material_slots if s.material}
     if task == "build":
         return len(meshes) >= 6, f"{len(meshes)} meshes"
     if task == "batch":
         return len(meshes) >= 25 and len(materials) >= 25, f"{len(meshes)} meshes, {len(materials)} materials"
+    if task == "slow":
+        return "slept 75" in answer, answer[:80]
+    if task == "generate":
+        cube = bpy.data.objects.get("Cube")
+        top = max((cube.matrix_world @ v.co).z for v in cube.data.vertices) if cube else 1.0
+        new = [o for o in meshes if o.name != "Cube"]
+        lows = [min((o.matrix_world @ Vector(c)).z for c in o.bound_box) for o in new]
+        placed = any(abs(low - top) < 0.15 for low in lows)
+        return placed, f"{len(new)} new mesh(es), lowest points {[round(z, 2) for z in lows]}, cube top {top:.2f}"
     if task == "assets":
         world = bpy.context.scene.world
         hdri = bool(world and world.node_tree and any(n.type == "TEX_ENVIRONMENT" and n.image
@@ -78,7 +94,7 @@ def finish():
         result = next((e for e in reversed(events) if e.get("type") == "result"), {})
         tools = [block.get("name", "") for e in events if e.get("type") == "assistant"
                  for block in e.get("message", {}).get("content", []) if block.get("type") == "tool_use"]
-        done, detail = scene_check(task)
+        done, detail = scene_check(task, str(result.get("result", "")))
         report.update(
             usage=result.get("usage", {}), cost_usd=result.get("total_cost_usd"),
             turns=result.get("num_turns"), duration_ms=result.get("duration_ms"),
