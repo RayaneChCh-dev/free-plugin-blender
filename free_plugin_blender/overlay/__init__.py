@@ -19,6 +19,7 @@ import os
 import re
 import time
 import traceback
+from pathlib import Path
 
 import bpy
 import gpu
@@ -96,6 +97,7 @@ class _State:
         self.show_thread = True
         self.excluded: set[str] = set()
         self.library: list = []  # the generations last drawn in Assets › My generations, for clicks
+        self.picked = ""  # the image last clicked in My generations: its actions show under the list
         self.notice = ("", 0.0)
         self.session = 0
         self.errors = 0
@@ -108,6 +110,58 @@ state = _State()
 
 def _notify(text):
     state.notice = (text, time.time())
+
+
+def show(mode, notice=""):
+    """Open the bar on a tab (e.g. after an action elsewhere), with a notice above the field."""
+    state.expanded, state.mode = True, mode
+    if mode == "scene":
+        state.show_thread, state.scroll = True, 0.0
+    if notice:
+        _notify(notice)
+    _redraw()
+
+
+# The actions under a generated image: (operator action, button label).
+RESULT_ACTIONS = (("MATERIAL", "Use as material"), ("MESH", "Make 3D"), ("SCENE", "Build a scene"))
+
+
+def _result(context, mode):
+    """The generated image whose actions show above the field, or None."""
+    if mode == "image":
+        latest = next((t for t in tasks.TASKS if t.label.startswith("Image:")), None)
+        if latest is None or latest.state != "done" or not isinstance(latest.result, str):
+            return None
+        path = latest.result
+    elif mode == "assets" and _mine(context) and state.picked:
+        path = state.picked
+    else:
+        return None
+    return path if os.path.isfile(path) else None
+
+
+def _draw_result(rects, x, y, row_w, s, path):
+    """"✓ name" on the left, the action buttons on the right."""
+    height, size = 34 * s, 12 * s
+    gfx.outlined(x, y, row_w, height, 10 * s, gfx.SURFACE_BORDER, gfx.SURFACE)
+    right = x + row_w - 6 * s
+    for action, label in reversed(RESULT_ACTIONS):
+        button_w = gfx.measure(label, size) + 20 * s
+        right -= button_w
+        hit = f"act:{action}"
+        fill = gfx.ACCENT if action == "SCENE" else gfx.BG_HOVER
+        if state.hover == hit:
+            fill = hexa_bright(fill)
+        gfx.rounded(right, y + 5 * s, button_w, height - 10 * s, 7 * s, fill)
+        gfx.text_centered(right + button_w / 2, y + height / 2, label, size,
+                          gfx.ACCENT_TEXT if action == "SCENE" else gfx.TEXT)
+        rects.append((hit, right, y + 5 * s, button_w, height - 10 * s))
+        right -= 6 * s
+    gfx.icon_check(x + 16 * s, y + height / 2, 11 * s, gfx.OK)
+    name = library.Entry(Path(path), "IMAGE", "images", 0).name
+    gfx.text(x + 30 * s, y + height / 2 - 12.5 * s * 0.36, gfx.ellipsize(name, right - x - 40 * s, 12.5 * s),
+             12.5 * s, gfx.TEXT_BODY)
+    return height
 
 
 def _modes():
@@ -682,6 +736,7 @@ def _draw_card(context, region, s, rects):
 
     banner = _banner(context, mode)
     live = _live(mode)
+    result = _result(context, mode)
     layout, middle_h = None, 0
     if mode == "assets":
         count = len(_library(context)) if _mine(context) else len(context.scene.free_plugin.ph_results)
@@ -697,6 +752,9 @@ def _draw_card(context, region, s, rects):
     live_y = cursor
     if live:
         cursor += 20 * s + 8 * s
+    result_y = cursor
+    if result:
+        cursor += 34 * s + 10 * s
     banner_y = cursor
     if banner:
         cursor += 38 * s + 10 * s
@@ -718,6 +776,8 @@ def _draw_card(context, region, s, rects):
         _draw_banner(rects, box_x, banner_y, box_w, s, banner)
     if live:
         _draw_live(box_x + 4 * s, live_y, box_w - 8 * s, s, live)
+    if result:
+        _draw_result(rects, box_x, result_y, box_w, s, result)
 
     # Composer box.
     box_y = y0 + margin
@@ -955,6 +1015,18 @@ def _click(context, hit):
             entry = state.library[index]
             bpy.ops.freeplugin.library_use(filepath=str(entry.path))
             _notify(f"{entry.name}: added to the scene")
+            if entry.kind == "IMAGE":
+                state.picked = str(entry.path)
+    elif hit.startswith("act:"):
+        path = _result(context, state.mode)
+        if path:
+            try:
+                bpy.ops.freeplugin.use_generation(filepath=path, action=hit[4:])
+            except RuntimeError as error:
+                _notify(str(error).splitlines()[-1].replace("Error: ", "")[:120])
+            else:
+                if hit == "act:MATERIAL":
+                    _notify("Material applied to the active mesh")
     elif hit.startswith("asset:"):
         bpy.ops.freeplugin.polyhaven_apply(asset_id=hit[6:], kind=props.ph_kind)
         _notify(f"Applying {hit[6:]}…")

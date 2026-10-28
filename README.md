@@ -310,6 +310,25 @@ check the **price shown next to the Generate button** before you click.
 Attach the **camera view** with **+** to generate from what the camera sees (image → image,
 image → 3D, image → video).
 
+### After an image: use it
+
+When an image is done, the **Image** tab shows it with three actions:
+
+<p align="center">
+  <img src="docs/assets/image-actions.png" alt="A finished image with Use as material, Make 3D and Build a scene" width="70%">
+</p>
+
+| Action | What happens | Cost |
+|---|---|---|
+| **Use as material** | the image becomes the base colour of the selected mesh (with relief from the colour) | free |
+| **Make 3D** | the **3D** tab opens with the image attached: pick a model, check the price, then *Generate* | the 3D model's price |
+| **Build a scene** | the image is sent to Claude, who builds a scene like it (layout, objects, light, mood) with simple shapes and free Poly Haven assets, then asks whether you want textures and materials | your Claude plan |
+
+The same actions are on every image in **Assets → My generations** (click the image, the row appears under
+the list) and in the sidebar's **Generations** history. Claude sees the image itself: it's sent with the
+message (resized to 1568 px). With an API key, OpenAI and Gemini see it too; DeepSeek can't read images,
+so it's told to ask you to describe it.
+
 ### My generations
 
 Everything you generate is saved in **`~/Kiln`** (change it in *Preferences → Display and files →

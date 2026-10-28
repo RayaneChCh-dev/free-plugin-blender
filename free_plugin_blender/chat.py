@@ -28,7 +28,7 @@ from pathlib import Path
 
 import bpy
 
-from . import agent, api_models, catalog, claude_models, mcpserver, prefs
+from . import agent, api_models, attach, catalog, claude_models, mcpserver, prefs
 from .net import ApiError
 from .providers import openai_compat
 
@@ -203,10 +203,11 @@ provided tools, which run in this Blender.
 
 # --------------------------------------------------------------------------- running
 
-def send(text: str, scene, note: str = "") -> str | None:
+def send(text: str, scene, note: str = "", images=()) -> str | None:
     """Start a turn. Returns an error message, or None when the turn started.
 
-    `note` is context for Claude (e.g. the selection) that is sent but not shown.
+    `note` is context for Claude (e.g. the selection) that is sent but not shown;
+    `images` are image files Claude sees with the message.
     """
     text = text.strip()
     if not text:
@@ -214,7 +215,7 @@ def send(text: str, scene, note: str = "") -> str | None:
     if state.busy:
         return "Claude is still answering" if prefs.get().chat_provider == "CLAUDE" else "Still answering"
     if prefs.get().chat_provider != "CLAUDE":
-        return _send_api(text, scene, note)
+        return _send_api(text, scene, note, images)
     executable = claude_executable()
     if executable is None:
         return "Claude Code is not installed: see Scene tab › Claude account"
@@ -227,7 +228,7 @@ def send(text: str, scene, note: str = "") -> str | None:
     if not servers:
         return f"The Free Plugin MCP server could not start: {mcpserver.state.error}"
     state.scene_name = scene.name
-    _add("user", text)
+    _add("user", attach.shown(text, images))
     state.busy, state.status = True, "Claude is thinking…"
     command = [
         executable, "-p", "--output-format", "stream-json", "--verbose",
@@ -240,11 +241,14 @@ def send(text: str, scene, note: str = "") -> str | None:
     settings = prefs.get()
     command += claude_models.cli_arguments(settings.chat_model, settings.chat_effort)
     prompt = f"{text}\n\n{note}" if note else text
+    if images:  # images only travel in the JSON input format
+        command += ["--input-format", "stream-json"]
+        prompt = attach.claude_stdin(prompt, images)
     threading.Thread(target=_run, args=(command, prompt), name="free-plugin:chat", daemon=True).start()
     return None
 
 
-def _send_api(text, scene, note):
+def _send_api(text, scene, note, images=()):
     provider = prefs.get().chat_provider
     info, key = api_models.preset(provider), prefs.api_key(provider)
     if not key:
@@ -260,7 +264,7 @@ def _send_api(text, scene, note):
         _add("info", f"{info['label']} starts with a fresh context (it cannot read the other model's turns).")
     state.api_provider = provider
     state.scene_name = scene.name
-    _add("user", text)
+    _add("user", attach.shown(text, images))
     state.busy, state.status, state.stop_requested = True, f"{model} is thinking…", False
     mcpserver.acquire()
     sees = openai_compat.sees_images(name)
@@ -279,9 +283,15 @@ def _send_api(text, scene, note):
         _add(role, value)
         state.status = f"Running {value.split(':')[0]}…" if role == "tool" else f"{model} is thinking…"
 
+    message = f"{text}\n\n{note}" if note else text
+    if images and sees:
+        message = attach.openai_content(message, images)
+    elif images:
+        message += "\n\n(An image was attached, but this model cannot read images: ask the user to describe it.)"
+
     def run():
         try:
-            agent.run_turn(state.api_history, f"{text}\n\n{note}" if note else text, complete=complete,
+            agent.run_turn(state.api_history, message, complete=complete,
                            call_tool=mcpserver.call_blocks, on_event=on_event,
                            should_stop=lambda: state.stop_requested, images=sees)
         except ApiError as error:

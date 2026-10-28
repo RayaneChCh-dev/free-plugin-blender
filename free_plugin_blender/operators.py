@@ -536,6 +536,69 @@ class FREEPLUGIN_OT_library_use(bpy.types.Operator):
         return {"FINISHED"}
 
 
+SCENE_FROM_IMAGE = (
+    "Build a 3D scene in Blender that represents the attached image: its layout, main objects, "
+    "proportions, lighting and mood. Model with simple shapes and use free Poly Haven assets where they "
+    "fit; do not start any paid generation without asking me. When the blocking is done, tell me what you "
+    "built and ask whether I want you to add textures and materials like in the image."
+)
+
+
+GENERATION_ACTIONS = (
+    ("MATERIAL", "Use as material", "Put the image on the active mesh as its base colour (free)"),
+    ("MESH", "Make 3D from it", "Open the 3D tab with this image attached: pick a model and see the price, "
+     "then Generate"),
+    ("SCENE", "Build a scene from it", "Send the image to Claude, who builds a scene like it, "
+     "then asks about materials"),
+)
+
+
+class FREEPLUGIN_OT_use_generation(bpy.types.Operator):
+    bl_idname = "freeplugin.use_generation"
+    bl_label = "Use this image"
+    bl_description = "Do something with a generated image"
+    bl_options = {"REGISTER", "UNDO"}
+
+    filepath: bpy.props.StringProperty(options={"SKIP_SAVE"})
+    action: bpy.props.EnumProperty(items=GENERATION_ACTIONS, options={"SKIP_SAVE"})
+
+    @classmethod
+    def description(cls, context, properties):
+        return next(text for key, _label, text in GENERATION_ACTIONS if key == properties.action)
+
+    def execute(self, context):
+        path = Path(bpy.path.abspath(self.filepath))
+        if not path.is_file():
+            self.report({"ERROR"}, f"Image not found: {path.name}")
+            return {"CANCELLED"}
+        name = library.Entry(path, "IMAGE", "images", 0).name
+        props = context.scene.free_plugin
+        if self.action == "MATERIAL":
+            obj = context.active_object
+            if obj is None or obj.type != "MESH":
+                self.report({"ERROR"}, "Select a mesh first: the image becomes its material")
+                return {"CANCELLED"}
+            scene.build_material(obj, name[:60], {"base_color": path}, tiling=props.texture_tiling,
+                                 bump_from_color=True)
+            self.report({"INFO"}, f"{name} is now the material of {obj.name}")
+            return {"FINISHED"}
+
+        from . import overlay
+
+        if self.action == "MESH":
+            props.mesh_source, props.mesh_image_path = "FILE", str(path)
+            overlay.show("mesh", "Image attached: pick a 3D model, check the price, then Generate")
+            return {"FINISHED"}
+
+        small = scene.thumbnail(path, prefs.output_dir("captures") / f"{path.stem[:60]}-for-claude.jpg")
+        error = chat.send(SCENE_FROM_IMAGE, context.scene, images=[small])
+        if error:
+            self.report({"ERROR"}, error)
+            return {"CANCELLED"}
+        overlay.show("scene", "")
+        return {"FINISHED"}
+
+
 class FREEPLUGIN_OT_local_remesh(bpy.types.Operator):
     bl_idname = "freeplugin.local_remesh"
     bl_label = "Voxel remesh"
@@ -787,6 +850,7 @@ classes = (
     FREEPLUGIN_OT_polyhaven_search,
     FREEPLUGIN_OT_polyhaven_apply,
     FREEPLUGIN_OT_library_use,
+    FREEPLUGIN_OT_use_generation,
     FREEPLUGIN_OT_local_remesh,
     FREEPLUGIN_OT_local_lods,
     FREEPLUGIN_OT_chat_send,
