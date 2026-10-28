@@ -47,97 +47,30 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.4.0 | Barre de prompt dans le viewport, chat Claude, compte Claude (PR #2) | publiée |
 | 0.5.0 | Modèles Claude précis + effort Medium par défaut (PR #3) | publiée |
 | 0.6.0 | Réglages simples par mode (`controls.py`), Meshy 7 via fal.ai (PR #4) | publiée |
-| 0.7.0 | **Onglet Animation** | **en cours, branche `feat/animation-tab`** |
+| 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (branche `feat/animation-tab`) | PR ouverte |
 
-## 4. Travail en cours : onglet Animation (branche `feat/animation-tab`)
+## 4. Dernier travail : onglet Animation (v0.7.0, branche `feat/animation-tab`)
 
-Commit WIP `ec63704`, poussé. **Pas encore de PR.** Décision de l'utilisateur :
-**presets d'abord**, et l'utilisateur peut aussi écrire un **mouvement libre**.
+PR ouverte, à fusionner par l'utilisateur, puis tag `v0.7.0`.
 
-### Déjà fait (sur la branche)
-
-- `free_plugin_blender/data/animations.json` : 678 presets Meshy
-  (`id`, `name`, `category`, `sub`, `in_place`). Catégories : WalkAndRun,
-  BodyMovements, DailyActions, Fighting, Dancing. Régénération :
-  `MESHY_API_KEY=… python3 scripts/refresh_animations.py`
-  (`GET https://api.meshy.ai/openapi/v1/animations/library`, gratuit).
-  La clé Meshy de l'utilisateur est dans `~/.config/meshy/meshy.env` :
-  la charger sans l'afficher, par exemple
-  `( set -a; . ~/.config/meshy/meshy.env; set +a; python3 scripts/refresh_animations.py )`.
-- `free_plugin_blender/rigmap.py` (sans bpy) : `humanoid_map(names, parents)`,
-  `joint_pairs(...)` → `(joint, os source, os cible, articulation suivante)`.
-  Gère SMPL (`L_Shoulder` = bras, `L_Foot` = orteils), Meshy et Mixamo
-  (`LeftShoulder` = clavicule), Rigify et Unreal. Tests : `tests/unit/test_rigmap.py`.
-- `free_plugin_blender/retarget.py` (bpy) :
-  - `find_rig(obj)` ;
-  - `retarget(source, target, action_name=, in_place=)` → `(action, nb d'articulations)` ;
-  - `remove_objects(objs)`.
-
-  Principe : rotation de chaque os source par rapport à son repos, appliquée à
-  l'os cible après alignement des repos. **Les directions des membres sont
-  calculées d'articulation à articulation**, pas avec l'axe Y des os : les imports
-  glTF et FBX devinent les orientations, et le rig Meshy a des « os » de pied
-  d'environ 9 m. Le déplacement racine est mesuré depuis la **première image**
-  (le repos SMPL a les hanches à l'origine), et la hauteur est mise à l'échelle
-  des hanches. Une action avec `use_fake_user=True` est créée.
-- **Vérifié sur données réelles** : l'exemple Hunyuan Motion (SMPL-H, 52 os,
-  30 i/s, 90 images, course puis saut) appliqué à une copie de
-  `~/spirit-game/assets/models/source/tiziri/rigged.glb` (en lecture seule).
-  22 articulations appariées, 0,5 s, directions identiques, pieds au sol.
-  - URL de l'exemple : `https://v3b.fal.media/files/b/0a885f1e/JytCv1tbq28iJmvXLrpbQ_20251230_112744828_2a84e993_000.fbx`
-  - Ce `rigged.glb` contient une `Icosphere` de 2 m parasite : la masquer pour
-    les captures, et masquer aussi les armatures (os géants).
-
-### Reste à faire
-
-1. **`free_plugin_blender/animation.py`** (bpy) : opérateurs.
-   - `freeplugin.animate_preset(action_id)` :
-     - personnage = objet actif ; rig = `retarget.find_rig(obj)` ;
-     - exporter le **maillage** en GLB (sans armature) ;
-     - `fal.run("fal-ai/meshy/rigging", {"model_url": data_uri, "height_meters": h,
-       "enable_animation": True, "animation_action_id": id})`, environ **0,32 $** ;
-     - la sortie contient `animation_glb.url` (et aussi `rigged_character_glb`,
-       `basic_animations`) ;
-     - si le personnage **a déjà un rig** : importer `animation_glb`, le retargeter
-       sur ce rig comme nouvelle action nommée d'après le preset, puis supprimer
-       les objets importés ;
-     - sinon : importer le personnage animé à la place du maillage d'origine
-       (cacher l'original) et le marquer, pour que les presets suivants s'y ajoutent.
-     - Il n'existe **pas** d'endpoint fal.ai pour animer un rig existant : chaque
-       preset refait le rig (0,32 $).
-   - `freeplugin.generate_motion(prompt, duration)` :
-     - `fal.run("fal-ai/hunyuan-motion", {"prompt", "duration" (0,5–12 s, défaut 5),
-       "output_format": "fbx"})`, environ **0,08 $** ;
-     - la sortie est `fbx_file.url` (squelette SMPL-H) ;
-     - importer avec `bpy.ops.import_scene.fbx` ; s'il y a un rig cible,
-       retargeter puis supprimer le mannequin importé ; sinon garder le mannequin.
-   - `freeplugin.copy_motion` (gratuit) : armature active = cible, autre armature
-     sélectionnée = source avec action.
-   - Le personnage doit regarder vers **-Y** dans Blender (exigence de Meshy).
-2. **Propriétés** (dans `props.py`) :
-   - presets : recherche, catégorie (ALL + 5), filtre « sur place », collection
-     de résultats remplie depuis le JSON (callbacks `update`) et index ;
-   - mouvement libre : prompt et durée.
-3. **Sidebar** (`panels.py`) : ajouter l'onglet `ANIM` à `sidebar_tab`, avec les
-   sections :
-   - Personnage (état : rig ou non) ;
-   - Presets (≈ 0,32 $), avec `template_list` et le bouton Animate ;
-   - Mouvement libre (≈ 0,08 $) ;
-   - Copier un mouvement (gratuit).
-4. **Barre** (`overlay/__init__.py`) : mode `animation`. Le texte sert au mouvement
-   libre, avec une puce Durée, une puce « On: <rig> » ou « No rig: a mannequin is
-   created », et l'étiquette de prix. Ajouter le mode à `MODES` et `PLACEHOLDERS`,
-   et l'action à `_submit`.
-5. **Tests** :
-   - `tests/blender/test_retarget.py` : rigs synthétiques construits dans le test
-     (source SMPL animée, cible Meshy en A-pose), directions articulation à
-     articulation à moins de 2°, pieds au sol, sans fichier lourd dans le dépôt ;
-   - `tests/blender/test_animation.py` : faux fal.ai (`tests/blender/fakes.py`).
-     Le faux rigging renvoie un GLB animé généré dans le test, le faux Hunyuan un
-     FBX exporté par le test ;
-   - `tests/gui/` : onglet et mode Animation avec de vrais clics ;
-   - tests unitaires du filtrage des presets.
-6. **README** (section Animation), `docs/ROADMAP.md`, version **0.7.0**, puis PR.
+- `presets.py` (sans bpy) : `data/animations.json` (678 presets Meshy), `search()`,
+  prix et durées. Régénération du JSON :
+  `( set -a; . ~/.config/meshy/meshy.env; set +a; python3 scripts/refresh_animations.py )`
+  (charger la clé sans l'afficher).
+- `animation.py` : `freeplugin.animate_preset` (`fal-ai/meshy/rigging` avec
+  `enable_animation`, ≈ 0,32 $, sortie `animation_glb`), `freeplugin.generate_motion`
+  (`fal-ai/hunyuan-motion`, FBX SMPL-H, ≈ 0,08 $), `freeplugin.copy_motion` (gratuit).
+  Avec un rig : retarget en nouvelle action puis suppression de l'import, et le rig
+  redevient actif (sinon l'import laisse la sélection vide). Sans rig : le personnage
+  importé remplace le maillage caché (tag `free_plugin_character`), le mannequin
+  Hunyuan est gardé au curseur.
+- `rigmap.py`, `retarget.py` : appariement des os et retarget (voir leurs docstrings).
+  Vérifié sur données réelles (Hunyuan → `tiziri/rigged.glb`) : 22 articulations.
+- UI : onglet `ANIM` de la sidebar, mode `animation` de la barre (puces Duration et rig).
+- Tests : `tests/unit/test_presets.py`, `tests/blender/rigs.py` (rigs synthétiques),
+  `test_retarget.py`, `test_animation.py`, `tests/gui/test_animation_ui.py`.
+- **Non testé** : appels réels à fal.ai (pas de clé). Le format exact de
+  `animation_glb` et du FBX Hunyuan vient de la doc fal.ai et de l'exemple public.
 
 ### Ensuite (roadmap)
 
@@ -169,7 +102,8 @@ free_plugin_blender/
   claude_models.py   modèles Claude exacts et efforts (sans bpy)
   overlay/           barre du viewport (gpu/blf) : field.py (sans bpy), gfx.py, __init__.py (modal)
   tasks.py           threads réseau + file d'attente sur le thread principal ; état dans wm["free_plugin_tasks"]
-  rigmap.py, retarget.py, data/animations.json   (branche feat/animation-tab)
+  animation.py       opérateurs de l'onglet Animation ; presets.py (sans bpy)
+  rigmap.py, retarget.py, data/animations.json
 ```
 
 Schémas fal.ai : `https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=<id>`.
@@ -180,7 +114,7 @@ toute modification de `data/models.json`.
 
 ```bash
 uvx ruff@0.14.0 check .
-python3 -m pytest -q                                                   # 79 passent sur la branche
+python3 -m pytest -q                                                   # 84 passent
 python3 scripts/run_blender_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender
 python3 scripts/run_gui_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender   # fenêtre, pas en CI
 ```

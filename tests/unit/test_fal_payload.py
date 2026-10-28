@@ -50,3 +50,12 @@ def test_rig_urls():
 def test_run_without_key_fails_fast():
     with pytest.raises(ApiError, match="fal.ai key"):
         fal.run("m", {}, "")
+
+
+def test_animation_and_motion_urls():
+    assert fal.animation_url({"animation_glb": {"url": "https://x/a.glb"}}) == "https://x/a.glb"
+    assert fal.motion_url({"fbx_file": {"url": "https://x/m.fbx"}}) == "https://x/m.fbx"
+    with pytest.raises(ApiError):
+        fal.animation_url({"rigged_character_glb": {"url": "https://x/r.glb"}})
+    with pytest.raises(ApiError):
+        fal.motion_url({})

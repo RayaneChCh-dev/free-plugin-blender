@@ -12,7 +12,7 @@ from pathlib import Path
 
 import bpy
 
-from . import account, chat, params, prefs, tasks, ui_controls
+from . import account, animation, chat, params, prefs, presets, tasks, ui_controls
 
 _ROLE_ICONS = {"user": "USER", "assistant": "LIGHT_SUN", "tool": "TOOL_SETTINGS", "error": "ERROR", "info": "INFO"}
 _TASK_ICONS = {"running": "SORTTIME", "done": "CHECKMARK", "error": "ERROR"}
@@ -22,6 +22,13 @@ class FREEPLUGIN_UL_assets(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_prop, index=0):
         icon = {"hdris": "WORLD", "textures": "TEXTURE", "models": "MESH_MONKEY"}[data.ph_kind]
         layout.label(text=item.name, icon=icon)
+
+
+class FREEPLUGIN_UL_presets(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_prop, index=0):
+        row = layout.row()
+        row.label(text=item.name, icon="ARMATURE_DATA")
+        row.label(text=item.sub + (" · in place" if item.in_place else ""))
 
 
 def _section(layout, panel_id, title, icon, *, closed=False):
@@ -133,6 +140,43 @@ def _draw_chat(layout, context):
     row = layout.row(align=True)
     row.operator("freeplugin.chat_transcript", text="Transcript", icon="FILE_TEXT")
     row.operator("freeplugin.chat_reset", text="New", icon="ADD")
+
+
+def _draw_animation(layout, context):
+    props = context.scene.free_plugin
+    mesh, rig = animation.character(context.active_object)
+    body = _section(layout, "anim_character", "Character", "OUTLINER_OB_ARMATURE")
+    if body is not None:
+        if mesh is None and rig is None:
+            body.label(text="Select the character (mesh or armature)", icon="ERROR")
+        elif rig is None:
+            body.label(text=f"{mesh.name}: no rig", icon="MESH_DATA")
+            body.label(text="A preset rigs it too (Meshy). It must face -Y.", icon="INFO")
+        else:
+            body.label(text=f"Rig: {rig.name} ({len(rig.data.bones)} bones)", icon="CHECKMARK")
+            if rig.animation_data is not None:
+                body.prop(rig.animation_data, "action", text="Motion")
+    body = _section(layout, "anim_presets", f"Presets ({presets.PRESET_COST})", "ACTION")
+    if body is not None:
+        row = body.row(align=True)
+        row.prop(props, "anim_query", text="", icon="VIEWZOOM")
+        row.prop(props, "anim_in_place", text="", icon="PINNED")
+        body.prop(props, "anim_category", text="")
+        body.template_list("FREEPLUGIN_UL_presets", "", props, "anim_results", props, "anim_index", rows=6)
+        body.label(text=f"{len(props.anim_results)} presets")
+        body.operator("freeplugin.animate_preset", text=f"Animate  {presets.PRESET_COST}", icon="PLAY")
+    body = _section(layout, "anim_motion", f"Motion from text ({presets.MOTION_COST})", "OUTLINER_DATA_GP_LAYER")
+    if body is not None:
+        body.prop(props, "motion_prompt", text="")
+        body.prop(props, "motion_duration")
+        if rig is None:
+            body.label(text="No rig: a mannequin is created", icon="INFO")
+        body.operator("freeplugin.generate_motion", icon="PLAY")
+    body = _section(layout, "anim_copy", "Copy a motion (free)", "PASTEDOWN", closed=True)
+    if body is not None:
+        body.label(text="Select the animated rig, then Ctrl+click", icon="INFO")
+        body.label(text="the rig that receives the motion.", icon="BLANK1")
+        body.operator("freeplugin.copy_motion", icon="PASTEDOWN")
 
 
 def _draw_generations(layout):
@@ -251,6 +295,9 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
                     body.prop(props, "video_source")
                     body.operator("freeplugin.generate_video", icon="PLAY")
 
+        elif tab == "ANIM":
+            _draw_animation(layout, context)
+
         elif tab == "ASSETS":
             body = _section(layout, "polyhaven", "Poly Haven (free, CC0)", "WORLD")
             if body is not None:
@@ -268,5 +315,6 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
 
 classes = (
     FREEPLUGIN_UL_assets,
+    FREEPLUGIN_UL_presets,
     FREEPLUGIN_PT_main,
 )

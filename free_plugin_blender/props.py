@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import bpy
 
-from . import params, ui_controls
+from . import params, presets, ui_controls
 
 
 def _source_changed(self, context):
@@ -19,8 +19,24 @@ def _chat_input_changed(self, context):
         bpy.ops.freeplugin.chat_send()
 
 
+def refresh_presets(self, context=None):
+    """Fill the preset list from the library with the current search, category and filter."""
+    self.anim_results.clear()
+    for preset in presets.search(self.anim_query, self.anim_category, self.anim_in_place):
+        item = self.anim_results.add()
+        item.name, item.preset_id, item.sub, item.in_place = (preset["name"], preset["id"], preset["sub"],
+                                                              preset["in_place"])
+    self.anim_index = 0
+
+
 class FreePluginAsset(bpy.types.PropertyGroup):
     asset_id: bpy.props.StringProperty()
+
+
+class FreePluginPreset(bpy.types.PropertyGroup):
+    preset_id: bpy.props.IntProperty()
+    sub: bpy.props.StringProperty()
+    in_place: bpy.props.BoolProperty()
 
 
 class FreePluginProps(bpy.types.PropertyGroup):
@@ -30,6 +46,7 @@ class FreePluginProps(bpy.types.PropertyGroup):
                ("MESH", "3D", "3D models, rigging, retexture, mesh tools"),
                ("IMAGE", "Image", "Images and materials"),
                ("VIDEO", "Video", "Video generation"),
+               ("ANIM", "Animation", "Animate a character: presets, motion from text, copy a motion"),
                ("ASSETS", "Assets", "Free Poly Haven HDRIs, textures and models")],
     )
     image_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["image"])
@@ -93,6 +110,20 @@ class FreePluginProps(bpy.types.PropertyGroup):
     ph_results: bpy.props.CollectionProperty(type=FreePluginAsset)
     ph_index: bpy.props.IntProperty()
 
+    # Animation
+    anim_query: bpy.props.StringProperty(name="Search", update=refresh_presets)
+    anim_category: bpy.props.EnumProperty(
+        name="Category", items=[(key, label, "") for key, label in presets.CATEGORIES], update=refresh_presets,
+    )
+    anim_in_place: bpy.props.BoolProperty(
+        name="In place", description="Only motions that stay on the spot (no travel)", update=refresh_presets,
+    )
+    anim_results: bpy.props.CollectionProperty(type=FreePluginPreset)
+    anim_index: bpy.props.IntProperty()
+    motion_prompt: bpy.props.StringProperty(name="Motion", description="Describe the motion, e.g. a joyful jump")
+    motion_duration: bpy.props.FloatProperty(name="Duration", default=5.0, min=0.5, max=12.0, unit="TIME_ABSOLUTE",
+                                             description="Seconds of motion (0.5 to 12)")
+
     # Chat
     auth_code: bpy.props.StringProperty(name="Code", description="Paste the code shown in the browser, if asked")
     chat_input: bpy.props.StringProperty(
@@ -103,7 +134,7 @@ class FreePluginProps(bpy.types.PropertyGroup):
     remesh_voxel: bpy.props.FloatProperty(name="Voxel size", default=0.02, min=0.001, soft_max=0.5, unit="LENGTH")
 
 
-classes = (*params.classes, ui_controls.FreePluginChoices, FreePluginAsset, FreePluginProps)
+classes = (*params.classes, ui_controls.FreePluginChoices, FreePluginAsset, FreePluginPreset, FreePluginProps)
 
 
 def register():

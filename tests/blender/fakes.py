@@ -19,7 +19,10 @@ def fake_fal(method, url, headers=None, body=None, timeout=60):
     if "tripo" in model:
         return {"model_mesh": {"url": "https://x/m.fbx"}, "model_urls": {"glb": {"url": "https://x/m.glb"}}}
     if "rigging" in model:
-        return {"rigged_character_glb": {"url": "https://x/r.glb"}, "basic_animations": {}}
+        return {"rigged_character_glb": {"url": "https://x/r.glb"}, "basic_animations": {},
+                "animation_glb": {"url": "https://x/animation.glb"}}
+    if "hunyuan-motion" in model:
+        return {"fbx_file": {"url": "https://x/motion.fbx"}}
     return {"images": [{"url": "https://x/i.png", "content_type": "image/png"}]}
 
 
