@@ -18,6 +18,18 @@ def _mcp_changed(self, context):
     mcpserver.sync()
 
 
+CHAT_PROVIDERS = (
+    ("CLAUDE", "Claude (subscription)", "Claude Code with your Claude Pro/Max plan, no API key"),
+    ("OPENAI", "OpenAI (API key)", "Pay per use with your OpenAI key; Claude Code is not needed"),
+)
+
+
+def _api_changed(self, context):
+    from . import api_models
+
+    api_models.refresh_if_needed()
+
+
 MCP_MODES = (
     ("EXTERNAL", "mcp-for-blender", "The mcp-for-blender add-on's tools (the default, the most complete)"),
     ("BOTH", "mcp-for-blender + Free Plugin tools",
@@ -65,6 +77,19 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         name="Claude Code path", subtype="FILE_PATH",
         description="Path to the `claude` command (empty: look it up on PATH and in ~/.local/bin)",
     )
+    chat_provider: bpy.props.EnumProperty(
+        name="Chat with",
+        description="Who answers in the chat and the Scene builder",
+        items=[(key, label, text, 400 + index) for index, (key, label, text) in enumerate(CHAT_PROVIDERS)],
+        default="CLAUDE", update=_api_changed,
+    )
+    openai_key: bpy.props.StringProperty(
+        name="OpenAI key", subtype="PASSWORD", update=_api_changed,
+        description="From https://platform.openai.com/api-keys (env var OPENAI_API_KEY also works)",
+    )
+    openai_model: bpy.props.StringProperty(
+        name="OpenAI model", description="Model id; empty: the newest from the live list",
+    )
     chat_model: bpy.props.EnumProperty(
         name="Claude model",
         description="Model the chat uses",
@@ -111,11 +136,15 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         layout = self.layout
 
         box = layout.box()
-        box.label(text="1 · Claude — chat and scene building, with your subscription", icon="USER")
-        panels.draw_claude_account(box)
-        row = box.row()
-        row.prop(self, "chat_model")
-        row.prop(self, "chat_effort")
+        box.label(text="1 · Chat — scene building with Claude (subscription) or an API key", icon="USER")
+        box.prop(self, "chat_provider")
+        if self.chat_provider == "CLAUDE":
+            panels.draw_claude_account(box)
+            row = box.row()
+            row.prop(self, "chat_model")
+            row.prop(self, "chat_effort")
+        else:
+            panels.draw_api_account(box, self)
 
         box = layout.box()
         box.label(text="2 · fal.ai — image, material, 3D and video generation (pay per use)", icon="IMAGE_DATA")
@@ -189,6 +218,13 @@ def get():
 
 def fal_key():
     return get().fal_key.strip() or os.environ.get("FAL_KEY", "").strip()
+
+
+def api_key(provider=None):
+    provider = provider or get().chat_provider
+    if provider == "OPENAI":
+        return get().openai_key.strip() or os.environ.get("OPENAI_API_KEY", "").strip()
+    return ""
 
 
 def meshy_key():

@@ -20,7 +20,19 @@ import traceback
 
 import bpy
 
-from .. import account, animation, catalog, chat, claude_models, mcpserver, prefs, presets, tasks, ui_controls
+from .. import (
+    account,
+    animation,
+    api_models,
+    catalog,
+    chat,
+    claude_models,
+    mcpserver,
+    prefs,
+    presets,
+    tasks,
+    ui_controls,
+)
 from . import gfx
 from .field import Field, wrap
 
@@ -101,6 +113,8 @@ def _mentions(context):
 def _model_label(context, mode):
     props = context.scene.free_plugin
     if mode == "scene":
+        if prefs.get().chat_provider != "CLAUDE":
+            return api_models.current() or "Choose a model"
         return claude_models.model_label(prefs.get().chat_model)
     if mode == "assets":
         return dict(ASSET_KINDS)[props.ph_kind]
@@ -118,6 +132,11 @@ def _needs_fal(context, mode):
 
 def _info(context, mode):
     """(text, color, action) for the chip in the card header; action runs on click."""
+    if mode == "scene" and prefs.get().chat_provider != "CLAUDE":
+        label = api_models.preset()["label"]
+        if not prefs.api_key():
+            return f"Add {label} key", gfx.DANGER, "prefs"
+        return f"{label} API", gfx.TEXT_DIM, None
     if mode == "scene":
         if chat.claude_executable() is None:
             return "Install Claude Code", gfx.DANGER, "install"
@@ -770,6 +789,8 @@ class FREEPLUGIN_OT_overlay_set(bpy.types.Operator):
             prefs.get().chat_model = self.value
         elif self.target == "chat_effort":
             prefs.get().chat_effort = self.value
+        elif self.target == "api_model":
+            prefs.get().openai_model = self.value
         elif self.target == "duration":
             props.motion_duration = float(self.value)
         elif self.target == "kind":
@@ -836,6 +857,11 @@ class FREEPLUGIN_MT_overlay_model(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
         mode = state.mode
+        if mode == "scene" and prefs.get().chat_provider != "CLAUDE":
+            from .. import panels
+
+            panels.draw_api_models(layout)
+            return
         if mode == "scene":
             current = prefs.get().chat_model
             for key, label, _text in claude_models.MODELS:

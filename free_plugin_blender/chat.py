@@ -7,6 +7,9 @@ the built-in Free Plugin server (`mcpserver/`, compact tools, this Blender only)
 or both. Built-in tools are disabled (`--tools ""`) and only those MCP servers are
 loaded and allowed, so the chat can drive Blender and nothing else directly.
 
+With an API key instead (preference "Chat with"), `agent.py` runs the loop here,
+on the same Free Plugin tools called in-process, and the history is kept by us.
+
 The conversation (messages + Claude session id) is saved in the .blend file,
 on the scene, as `scene["free_plugin_chat"]`.
 """
@@ -25,7 +28,9 @@ from pathlib import Path
 
 import bpy
 
-from . import catalog, claude_models, mcpserver, prefs
+from . import agent, api_models, catalog, claude_models, mcpserver, prefs
+from .net import ApiError
+from .providers import openai_compat
 
 MCP_SERVER = "blender"  # mcp-for-blender
 OWN_SERVER = mcpserver.SERVER_NAME
@@ -47,6 +52,8 @@ class _State:
         self.scene_name = ""
         self.usage = ""  # tokens of the last answer
         self.session_tokens = 0
+        self.api_history: list[dict] = []  # OpenAI-format messages of the API-key chat
+        self.stop_requested = False
 
 
 state = _State()
@@ -181,6 +188,18 @@ through the `{MCP_SERVER}` MCP tools (run Python with bpy, inspect the scene, ta
 {_STYLE}"""
 
 
+def api_system_prompt() -> str:
+    from .mcpserver import tools
+
+    return f"""You are an assistant inside the user's open Blender session. You act on the scene only through the
+provided tools, which run in this Blender.
+{tools.INSTRUCTIONS}
+
+{_COSTS}
+
+{_STYLE}"""
+
+
 # --------------------------------------------------------------------------- running
 
 def send(text: str, scene, note: str = "") -> str | None:
@@ -192,7 +211,9 @@ def send(text: str, scene, note: str = "") -> str | None:
     if not text:
         return "Empty message"
     if state.busy:
-        return "Claude is still answering"
+        return "Claude is still answering" if prefs.get().chat_provider == "CLAUDE" else "Still answering"
+    if prefs.get().chat_provider != "CLAUDE":
+        return _send_api(text, scene, note)
     executable = claude_executable()
     if executable is None:
         return "Claude Code is not installed: see Scene tab › Claude account"
@@ -219,6 +240,53 @@ def send(text: str, scene, note: str = "") -> str | None:
     command += claude_models.cli_arguments(settings.chat_model, settings.chat_effort)
     prompt = f"{text}\n\n{note}" if note else text
     threading.Thread(target=_run, args=(command, prompt), name="free-plugin:chat", daemon=True).start()
+    return None
+
+
+def _send_api(text, scene, note):
+    provider = prefs.get().chat_provider
+    info, key = api_models.preset(provider), prefs.api_key(provider)
+    if not key:
+        return f"Add your {info['label']} key first (Preferences › Free Plugin Blender › 1 · Chat)"
+    model = api_models.current(provider)
+    if not model:
+        api_models.refresh(provider)
+        return "The model list is loading: try again in a moment"
+    state.scene_name = scene.name
+    _add("user", text)
+    state.busy, state.status, state.stop_requested = True, f"{model} is thinking…", False
+    mcpserver.acquire()
+    tools = openai_compat.tool_specs(mcpserver.tool_list())
+    system = [{"role": "system", "content": api_system_prompt()}]
+    effort, counts = prefs.get().chat_effort, [0, 0, 0]
+
+    def complete(history):
+        return openai_compat.complete(info["base_url"], key, model, system + history, tools, effort)
+
+    def on_event(role, value):
+        if role == "usage":
+            for index, count in enumerate(openai_compat.usage_counts(value)):
+                counts[index] += count
+            return
+        _add(role, value)
+        state.status = f"Running {value.split(':')[0]}…" if role == "tool" else f"{model} is thinking…"
+
+    def run():
+        try:
+            agent.run_turn(state.api_history, f"{text}\n\n{note}" if note else text, complete=complete,
+                           call_tool=mcpserver.call_blocks, on_event=on_event,
+                           should_stop=lambda: state.stop_requested)
+        except ApiError as error:
+            _add("error", str(error)[:600])
+        except Exception as error:  # noqa: BLE001 - shown in the chat
+            _add("error", f"{type(error).__name__}: {error}")
+        finally:
+            _set_usage(*counts)
+            mcpserver.release()
+            state.busy, state.status = False, ""
+            state.dirty = True
+
+    threading.Thread(target=run, name="free-plugin:agent", daemon=True).start()
     return None
 
 
@@ -309,7 +377,10 @@ def _tokens(count) -> str:
 def _record_usage(usage):
     cached = usage.get("cache_read_input_tokens", 0) or 0
     sent = (usage.get("input_tokens", 0) or 0) + (usage.get("cache_creation_input_tokens", 0) or 0) + cached
-    out = usage.get("output_tokens", 0) or 0
+    _set_usage(sent, cached, usage.get("output_tokens", 0) or 0)
+
+
+def _set_usage(sent, cached, out):
     if not sent and not out:
         return
     state.session_tokens += sent + out
@@ -319,12 +390,15 @@ def _record_usage(usage):
 def stop():
     if state.process is not None and state.process.poll() is None:
         state.process.terminate()
+    if state.busy and state.process is None:  # API-key chat: stops before its next step
+        state.stop_requested, state.status = True, "Stopping…"
 
 
 def reset():
     stop()
     state.messages.clear()
     state.session_id = ""
+    state.api_history = []
     state.usage, state.session_tokens = "", 0
     state.dirty = True
 
@@ -344,6 +418,7 @@ def _load(scene):
     data = json.loads(raw) if isinstance(raw, str) else {}
     state.messages = data.get("messages", [])
     state.session_id = data.get("session_id", "")
+    state.api_history = data.get("api_history", [])
     state.scene_name = scene.name
 
 
@@ -355,7 +430,8 @@ def _tick():
     if state.dirty:
         scene = bpy.data.scenes.get(state.scene_name) or bpy.context.scene
         if scene is not None:
-            scene["free_plugin_chat"] = json.dumps({"session_id": state.session_id, "messages": state.messages})
+            scene["free_plugin_chat"] = json.dumps({"session_id": state.session_id, "messages": state.messages,
+                                                     "api_history": agent.strip_images(state.api_history)})
         state.dirty = False
         for window in wm.windows if wm else ():
             for area in window.screen.areas:
@@ -392,6 +468,7 @@ def write_transcript() -> str:
 def _initial_load():
     if bpy.context.scene is not None:
         _load(bpy.context.scene)
+    api_models.refresh_if_needed()
 
 
 def register():

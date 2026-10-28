@@ -12,7 +12,7 @@ from pathlib import Path
 
 import bpy
 
-from . import account, animation, chat, params, prefs, presets, tasks, ui_controls
+from . import account, animation, api_models, chat, params, prefs, presets, tasks, ui_controls
 
 _ROLE_ICONS = {"user": "USER", "assistant": "LIGHT_SUN", "tool": "TOOL_SETTINGS", "error": "ERROR", "info": "INFO"}
 _TASK_ICONS = {"running": "SORTTIME", "done": "CHECKMARK", "error": "ERROR"}
@@ -73,6 +73,43 @@ def draw_claude_account(layout):
         layout.label(text=info.message, icon="INFO")
 
 
+def draw_api_models(layout):
+    """The provider's live model list, as menu entries; the current one is checked."""
+    current = api_models.current()
+    found = api_models.models()
+    if not found:
+        layout.label(text="Loading the model list…" if api_models.refreshing() else "No list yet", icon="INFO")
+    for model_id in found[:40]:
+        op = layout.operator("freeplugin.overlay_set", text=model_id,
+                             icon="CHECKMARK" if model_id == current else "BLANK1")
+        op.target, op.value = "api_model", model_id
+    layout.separator()
+    layout.operator("freeplugin.api_models_refresh", icon="FILE_REFRESH")
+
+
+class FREEPLUGIN_MT_api_models(bpy.types.Menu):
+    bl_idname = "FREEPLUGIN_MT_api_models"
+    bl_label = "Model"
+
+    def draw(self, context):
+        draw_api_models(self.layout)
+
+
+def draw_api_account(layout, settings):
+    """Key, model and effort of the API-key chat."""
+    info = api_models.preset()
+    row = layout.row(align=True)
+    row.prop(settings, "openai_key")
+    row.operator("freeplugin.open_url", text="Get a key", icon="URL").url = info["keys_url"]
+    if not prefs.api_key():
+        layout.label(text=f"Pay per use on your {info['label']} account. No Claude Code needed.", icon="INFO")
+        return
+    row = layout.row(align=True)
+    row.menu(FREEPLUGIN_MT_api_models.bl_idname, text=api_models.current() or "Choose a model")
+    row.prop(settings, "chat_effort", text="")
+    layout.label(text="Claude's tools here are the built-in Free Plugin tools.", icon="INFO")
+
+
 def context_props():
     return bpy.context.scene.free_plugin
 
@@ -84,13 +121,21 @@ def _status_header(layout, context):
     row.label(text=f"v{_version()}")
     row.operator("preferences.addon_show", text="", icon="PREFERENCES").module = prefs.ADDON_ID
     column = box.column(align=True)
-    if not account.ready():
+    if prefs.get().chat_provider != "CLAUDE":
+        label = api_models.preset()["label"]
+        if prefs.api_key():
+            column.label(text=f"Chat: {label} · {api_models.current() or 'choose a model'}", icon="CHECKMARK")
+        else:
+            column.label(text=f"Chat: {label} key not set", icon="ERROR")
+    elif not account.ready():
         column.label(text=account.label(), icon="ERROR")
     else:
         column.label(text=account.label(), icon="CHECKMARK")
     fal = bool(prefs.fal_key())
     column.label(text="fal.ai key: set" if fal else "fal.ai key: not set (Image, 3D, Video)",
                  icon="CHECKMARK" if fal else "DOT")
+    if prefs.get().chat_provider != "CLAUDE":
+        return  # the API-key chat calls the tools in-process: no MCP to report
     mode = prefs.get().mcp_mode
     if mode != "EXTERNAL":
         from . import mcpserver
@@ -120,7 +165,10 @@ def _draw_chat(layout, context):
     props = context.scene.free_plugin
     state = chat.state
     row = layout.row(align=True)
-    row.prop(prefs.get(), "chat_model", text="")
+    if prefs.get().chat_provider == "CLAUDE":
+        row.prop(prefs.get(), "chat_model", text="")
+    else:
+        row.menu(FREEPLUGIN_MT_api_models.bl_idname, text=api_models.current() or "Choose a model")
     row.prop(prefs.get(), "chat_effort", text="")
     width = max(24, int((context.region.width - 50) / (7 * context.preferences.system.ui_scale)))
     column = layout.column(align=True)
@@ -222,11 +270,19 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
         tab = props.sidebar_tab
 
         if tab == "SCENE":
-            connected = account.account.logged_in and chat.claude_executable() is not None
-            body = _section(layout, "claude", "Claude account", "USER", closed=bool(connected))
-            if body is not None:
-                draw_claude_account(body)
-            body = _section(layout, "chat", "Chat with Claude", "COMMUNITY")
+            if settings.chat_provider == "CLAUDE":
+                connected = account.account.logged_in and chat.claude_executable() is not None
+                body = _section(layout, "claude", "Claude account", "USER", closed=bool(connected))
+                if body is not None:
+                    draw_claude_account(body)
+                title = "Chat with Claude"
+            else:
+                body = _section(layout, "api", f"{api_models.preset()['label']} account", "USER",
+                                closed=bool(prefs.api_key()))
+                if body is not None:
+                    draw_api_account(body, settings)
+                title = f"Chat with {api_models.preset()['label']}"
+            body = _section(layout, "chat", title, "COMMUNITY")
             if body is not None:
                 _draw_chat(body, context)
             body = _section(layout, "bar", "Viewport bar", "WINDOW", closed=True)
@@ -333,6 +389,7 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
 
 
 classes = (
+    FREEPLUGIN_MT_api_models,
     FREEPLUGIN_UL_assets,
     FREEPLUGIN_UL_presets,
     FREEPLUGIN_PT_main,
