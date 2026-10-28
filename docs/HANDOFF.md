@@ -11,7 +11,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
   dans Blender via **Claude Code** sur l'abonnement de l'utilisateur
   (`claude -p` + un serveur MCP Blender).
 - Dépôt : https://github.com/RayaneChCh-dev/free-plugin-blender, dossier local
-  `~/free-plugin-blender`. Docs utilisateur en français dans `README.md`.
+  `~/free-plugin-blender`. Docs utilisateur en anglais dans `README.md` (nom affiché « Kiln », images dans `docs/assets/`).
 - Né de l'analyse de l'add-on Higgsfield (dépôt local séparé, non publié :
   `~/higgsfield-blender-decoded`).
 
@@ -28,7 +28,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
   workflow *Release* teste, construit et publie le zip tout seul.
 - Une fonctionnalité par PR. Ne pas commencer la suivante avant que la PR courante
   existe et soit verte. Attendre la fusion si la suivante touche les mêmes fichiers.
-- L'utilisateur parle français : réponses et docs utilisateur en français,
+- L’utilisateur parle français : réponses en français, README en anglais (choix du 2026-10-28),
   code et messages de commit en anglais.
 - Commits et PR : fin de message avec les lignes d'attribution demandées par la session.
 - L'utilisateur **n'a pas encore de clé fal.ai** : aucune génération réelle n'a été

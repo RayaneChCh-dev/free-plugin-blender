@@ -1,7 +1,7 @@
 # free-plugin-blender
 
 Blender extension (Python, stdlib only) in `free_plugin_blender/`. User docs are in
-`README.md` (French). The plan of upcoming work is `docs/ROADMAP.md`.
+`README.md` (English; images in `docs/assets/`). The plan of upcoming work is `docs/ROADMAP.md`.
 
 ## Every change goes through a pull request
 

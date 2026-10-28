@@ -1,112 +1,361 @@
-# free-plugin-blender
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="Kiln: AI generation and Claude chat for Blender" width="100%">
+</p>
 
-Extension Blender (4.2+, testée sur 5.2) pour générer **images, matériaux,
-vidéos et modèles 3D avec tes propres clés API**, sans abonnement à une
-plateforme intermédiaire, et pour **discuter avec Claude dans Blender** sur ton
-abonnement Claude (via Claude Code et un add-on MCP).
+<p align="center">
+  <a href="https://github.com/RayaneChCh-dev/free-plugin-blender/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/RayaneChCh-dev/free-plugin-blender?label=release&color=e8743b"></a>
+  <a href="https://github.com/RayaneChCh-dev/free-plugin-blender/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/RayaneChCh-dev/free-plugin-blender/ci.yml?branch=main&label=CI"></a>
+  <img alt="Blender 4.2+" src="https://img.shields.io/badge/Blender-4.2%2B%20%C2%B7%20tested%205.2-e87d0d?logo=blender&logoColor=white">
+  <img alt="Python stdlib only" src="https://img.shields.io/badge/dependencies-none%20(stdlib)-3776ab?logo=python&logoColor=white">
+  <a href="LICENSE"><img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue"></a>
+  <br>
+  <img alt="Claude" src="https://img.shields.io/badge/chat-Claude%20subscription-d97757?logo=anthropic&logoColor=white">
+  <img alt="fal.ai" src="https://img.shields.io/badge/generation-fal.ai-7c3aed">
+  <img alt="Poly Haven" src="https://img.shields.io/badge/assets-Poly%20Haven%20(free)-2f9e44">
+</p>
 
-| Fonction | Fournisseur | Modèle par défaut | Coût indicatif |
+<p align="center">
+  <b>Describe a scene, and Claude builds it in Blender.</b><br>
+  Generate images, materials, 3D models, animations and video with <b>your own</b> fal.ai key.<br>
+  No middleman platform, no extra subscription, and no Python dependencies.
+</p>
+
+<p align="center">
+  <a href="#-quick-start">Quick start</a> ·
+  <a href="#-features">Features</a> ·
+  <a href="#-step-by-step-setup">Setup</a> ·
+  <a href="#-using-kiln">Usage</a> ·
+  <a href="#-pricing">Pricing</a> ·
+  <a href="#-faq--troubleshooting">FAQ</a> ·
+  <a href="#-development">Development</a>
+</p>
+
+---
+
+<p align="center">
+  <img src="docs/assets/chat-scene.png" alt="Chatting with Claude in the Blender viewport" width="90%">
+</p>
+
+> **Kiln** is the display name of this project. The repository, the extension id
+> (`free_plugin_blender`) and the sidebar tab (**Free Plugin**) keep their original names,
+> so existing installs and links keep working.
+
+## ✨ Features
+
+| | What you get | Powered by | Cost |
 |---|---|---|---|
-| Texte/image → image | fal.ai | Seedream 4.5 (`fal-ai/bytedance/seedream/v4.5/*`) | ~0,04 $ / image |
-| Matériau tileable sur l'objet actif | fal.ai | Seedream 4.5 + relief calculé | ~0,04 $ |
-| Texte / vue caméra → vidéo (panneau masqué par défaut) | fal.ai | Kling 3.0 Pro (`fal-ai/kling-video/v3/pro/*`) | ~0,14 $ / s |
-| Texte / image / vue caméra → modèle 3D | fal.ai | au choix, voir ci-dessous | 0,02 à 0,53 $ |
-| Auto-rig + animations marche/course | fal.ai | Meshy rigging (`fal-ai/meshy/rigging`) | ~0,20 $ |
-| Animation : 678 presets Meshy | fal.ai | Meshy rigging + bibliothèque d'animations | ~0,32 $ / preset |
-| Animation : mouvement décrit en texte | fal.ai | Hunyuan Motion (`fal-ai/hunyuan-motion`) | ~0,08 $ |
-| Copier un mouvement d'un rig à un autre | Blender | — | **gratuit** |
-| Retexture d'un modèle | fal.ai, ou Meshy avec ta clé | Meshy retexture (`fal-ai/meshy/retexture`) | voir fal.ai |
-| HDRI, textures PBR, **modèles 3D** | Poly Haven | CC0 | **gratuit** |
-| Voxel remesh, LOD | Blender | — | **gratuit** |
+| 💬 | **Chat with Claude in the viewport.** Claude models, lights and dresses your scene | Your **Claude Pro / Max** subscription (via Claude Code) | included in your plan |
+| 💬 | Same chat with an API key instead | **OpenAI**, **Gemini** or **DeepSeek** | pay per use |
+| 🖼️ | Text / image / camera view → **image** | fal.ai · Seedream 4.5, Nano Banana, FLUX.2… | ~$0.04 / image |
+| 🧱 | **Tileable material** on the active object (with computed relief) | fal.ai · Seedream 4.5 | ~$0.04 |
+| 🗿 | Text / image / camera view → **3D model** | fal.ai · TRELLIS, TRELLIS 2, Tripo, Hunyuan3D, Meshy 7 | $0.02 – $0.53 |
+| 🦴 | **Auto-rig** + walk / run cycles | fal.ai · Meshy rigging | ~$0.20 |
+| 🕺 | **678 animation presets**, or a motion described in text | fal.ai · Meshy, Hunyuan Motion | $0.08 – $0.32 |
+| 🎨 | **Retexture** a model | fal.ai · Meshy retexture | see fal.ai |
+| 🎬 | Text / camera view → **video** (hidden by default) | fal.ai · Kling 3.0, Veo 3.1, Seedance… | ~$0.14 / s |
+| 🌄 | HDRIs, PBR textures, 3D models | **Poly Haven** (CC0) | **free** |
+| 🔁 | Copy a motion between rigs, voxel remesh, LOD | Blender | **free** |
 
-### Modèles 3D
+Any other fal.ai model can be added from its id, and its options appear automatically.
 
-| Modèle | Entrée | Coût fal.ai | Remarque |
+## 🚀 Quick start
+
+1. **Download** `free_plugin_blender-X.Y.Z.zip` from the
+   [**latest release**](https://github.com/RayaneChCh-dev/free-plugin-blender/releases/latest).
+2. In Blender: **Edit → Preferences → Get Extensions → ⌄ → Install from Disk…** and pick the zip.
+3. **Edit → Preferences → Add-ons → Free Plugin Blender**:
+   - click **Connect my Claude subscription** to chat with Claude;
+   - paste your **fal.ai key** to generate images, materials, 3D and video.
+4. Click the **"Describe the scene you imagine…"** bar at the bottom of the 3D viewport.
+
+Each step is explained in detail below.
+
+---
+
+## 📦 Step-by-step setup
+
+### What you need
+
+| Requirement | Needed for | Required? |
+|---|---|---|
+| [Blender](https://www.blender.org/download/) **4.2 or newer** (tested on 5.2) | everything | ✅ yes |
+| A **Claude Pro or Max** subscription + [Claude Code](https://claude.com/claude-code) | chatting with Claude | for the Claude chat |
+| A **fal.ai** account **with credits** + an API key | images, materials, 3D, rigging, animation, video | for generation |
+| The [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/) add-on + [`uv`](https://docs.astral.sh/uv/) | lets Claude act on the scene (default mode) | optional, see [step 5](#step-5-let-claude-act-on-the-scene-blender-mcp) |
+| An OpenAI, Gemini or DeepSeek API key | chatting with another model instead of Claude | optional |
+
+Poly Haven assets and the local mesh tools work with **no account at all**.
+
+### Step 1: Install the latest release
+
+> [!IMPORTANT]
+> Always install the **latest release** to get the newest features and fixes. The zip
+> attached to each release is built and tested by CI. You don't need to build anything.
+
+1. Open the [**Releases page**](https://github.com/RayaneChCh-dev/free-plugin-blender/releases/latest).
+2. Under **Assets**, download **`free_plugin_blender-X.Y.Z.zip`**. Do **not** unzip it.
+   (Ignore *Source code (zip)*: that is the raw repository, not the extension.)
+3. Open Blender and go to **Edit → Preferences…**.
+4. In the left column, click **Get Extensions**.
+5. Click the **⌄** menu in the top-right corner of the window and choose **Install from Disk…**.
+6. Select the downloaded zip and click **Install from Disk**.
+   *Shortcut: you can also drag the zip from your file manager and drop it onto the Blender window.*
+7. The extension is now listed and enabled under **Add-ons** as **Free Plugin Blender**.
+
+**Updating:** download the new zip and repeat steps 3 to 6. Blender replaces the old
+version. Your keys and settings are kept.
+
+### Step 2: Open the add-on preferences
+
+**Edit → Preferences → Add-ons**, type `Free Plugin` in the search field, then click the
+**▸** arrow next to **Free Plugin Blender** to unfold it. The preferences are grouped in
+numbered sections:
+
+<p align="center">
+  <img src="docs/assets/preferences.png" alt="Free Plugin Blender preferences: 1 Chat, 2 fal.ai, 3 Blender MCP" width="95%">
+</p>
+
+| Section | What it's for |
+|---|---|
+| **1 · Chat** | Who you chat with: your Claude subscription (default) or an API key |
+| **2 · fal.ai** | Your fal.ai key for every generation, and an optional Meshy key |
+| **3 · Blender MCP** | How Claude reaches the scene (its tools) |
+| **Display and files** | The viewport prompt bar, the video panel, where outputs are saved |
+| **Models** | Add your own fal.ai models (`models.json`) |
+| **Advanced** | A custom path to the `claude` executable |
+
+Blender saves preferences automatically by default. If you turned that off, click
+**☰ (bottom-left) → Save Preferences** after changing anything.
+
+### Step 3: Connect your Claude subscription
+
+The chat runs on **your own Claude Pro / Max plan** through Claude Code. You don't need an
+Anthropic API key and you don't pay per token.
+
+1. **Install Claude Code** if you don't have it. If it is missing, section **1 · Chat**
+   shows *"Claude Code is not installed"* and a **How to install Claude Code** button. That
+   button copies the install command to your clipboard and opens the Claude Code page.
+   Paste the command in a terminal:
+
+   ```bash
+   curl -fsSL https://claude.ai/install.sh | bash
+   ```
+
+   (Windows and other install methods: see <https://claude.com/claude-code>.)
+   Then click **⟳** (*Check again*) in the preferences.
+2. Make sure **Chat with** is set to **Claude (subscription)**.
+3. Click **Connect my Claude subscription**. Your browser opens the Claude sign-in page.
+   Sign in with the account that has your Pro / Max plan and approve.
+   - The preferences show *"Finish signing in in your browser…"* in the meantime.
+   - If the page shows you a **code**, paste it into the **Code** field and click ✓.
+     If it doesn't show one, there's nothing to paste.
+4. Once connected, the section shows your plan (for example *"Claude Max · you@example.com"*),
+   and the viewport bar shows **● Claude Max**. **Disconnect** signs you out.
+5. Optionally, choose the **Claude model** (Opus 5.5 by default) and the **Effort**
+   (Medium by default). Higher effort gives better results on hard scenes, but answers are
+   slower and use more of your plan. You can also change both from the viewport bar.
+
+> [!NOTE]
+> If Claude Code is installed somewhere unusual, set its location in
+> **Advanced → Claude Code path**.
+
+### Step 4: Create a fal.ai account, add credits, paste your key
+
+fal.ai hosts every generation model the extension uses (Seedream, Kling, TRELLIS, Tripo,
+Hunyuan, Meshy…). You pay fal.ai directly, per generation, and there's no subscription.
+
+**4a. Create an account**
+
+1. Go to <https://fal.ai> and click **Sign up** (GitHub, Google or e-mail).
+
+**4b. Add credits** (generations fail without them)
+
+1. Open your dashboard's **Billing** page: <https://fal.ai/dashboard/billing>.
+2. Add a payment method and **top up some credits**. A few dollars is enough to start:
+   an image costs about $0.04 and a TRELLIS 3D model about $0.02.
+3. Optional: enable auto top-up or set a spending limit there if you want to control costs.
+
+**4c. Create an API key**
+
+1. Open **API Keys**: <https://fal.ai/dashboard/keys>. In Blender, the **Get a key**
+   button next to the *fal.ai key* field opens the same page.
+2. Click **Add key** / **Create key**, give it a name (e.g. `blender`) and keep the
+   default **API** scope.
+3. **Copy the key right away.** fal.ai shows the full key only once. It looks like
+   `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxx` (id + `:` + secret).
+   Copy the **whole** string, including the part after the colon.
+
+**4d. Paste it in Blender**
+
+1. **Edit → Preferences → Add-ons → Free Plugin Blender → 2 · fal.ai**.
+2. Click the **fal.ai key** field, paste (**Ctrl+V**), press **Enter**. The field is a
+   password field, so it shows dots.
+3. That's it: the sidebar status and the viewport bar stop asking for a key, and every
+   **Generate** button is ready.
+
+> [!TIP]
+> **Prefer environment variables?** Leave the field empty and set `FAL_KEY` before
+> starting Blender (`export FAL_KEY=...`). The preference wins when both are set.
+>
+> **Meshy key (optional):** only if you already have Meshy credits and want to spend them
+> instead of fal.ai for 3D, rigging and retexture. Get it at
+> <https://www.meshy.ai/settings/api> (or set `MESHY_API_KEY`).
+
+> [!WARNING]
+> Your key is stored in Blender's user preferences on your machine and is only sent to
+> fal.ai. Never share it or commit it. If it leaks, delete it on the fal.ai **API Keys**
+> page and create a new one.
+
+### Step 5: Let Claude act on the scene (Blender MCP)
+
+Claude edits your scene through an MCP server. In **3 · Blender MCP**, choose
+**Claude's Blender tools**:
+
+| Mode | Claude gets | Extra install | Best for |
 |---|---|---|---|
-| **TRELLIS** | image | ~0,02 $ | Le moins cher, idéal pour itérer |
-| **TRELLIS 2** | image | ~0,30 $ | Plus fin, UV et remesh propres |
-| **Tripo H3.1** | texte ou image | ~0,30 $ | Bonne topologie, PBR |
-| **Hunyuan3D 3.1 Pro** | texte ou image | ~0,38 $ (+0,15 $ PBR) | Meilleure qualité de texture |
-| Meshy (ta clé) | texte ou image | crédits | Si tu as un abonnement Meshy |
+| **mcp-for-blender** (default) | the full `mcp-for-blender` toolset | `uv` + the `mcp-for-blender` add-on | the most complete toolset |
+| **mcp-for-blender + Free Plugin tools** | both, and it uses ours first | same | fewer tokens, nothing missing |
+| **Free Plugin tools only (lighter)** | only the built-in tools | **none** | the simplest setup and the fewest tokens |
 
-TRELLIS et TRELLIS 2 n'acceptent qu'une image. Avec un prompt texte, le plugin
-dessine d'abord une image de référence avec Seedream (+0,04 $), puis génère
-le modèle. Avec TRELLIS, un modèle 3D depuis un texte revient donc à environ 0,06 $.
+**Simplest setup:** pick **Free Plugin tools only**. Nothing else to install. The built-in
+server runs inside Blender on `127.0.0.1` with a secret token.
 
-Prix indicatifs relevés en octobre 2026, à vérifier sur
-[fal.ai/pricing](https://fal.ai/pricing) et [meshy.ai](https://www.meshy.ai/pricing).
+**Default mode (mcp-for-blender):**
+1. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
+   (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
+2. Install and enable the Blender add-on of
+   [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/) (**Get the mcp-for-blender add-on**
+   button). It listens on port **9876**.
+3. The box should show **✓ mcp-for-blender: listening on port 9876**. If it shows
+   *"Nothing listens on port 9876"*, the add-on is off.
 
-Aucune dépendance : uniquement la bibliothèque standard Python. Le zip fait
-environ 110 Ko.
+If something is missing, the viewport bar shows a banner explaining it in one sentence, with a
+**Fix it** button:
 
-## Installation
+<p align="center">
+  <img src="docs/assets/chat-banner-fix-it.png" alt="A banner in the bar: the Blender MCP add-on is off, with a Fix it button" width="80%">
+</p>
 
-```bash
-python3 scripts/build.py   # ou : blender --command extension build --source-dir free_plugin_blender --output-dir dist
-```
+### Optional: chat with OpenAI, Gemini or DeepSeek
 
-Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.11.0.zip`. Le panneau est dans la sidebar (N),
-onglet **Free Plugin**.
+In **1 · Chat**, set **Chat with** to **OpenAI**, **Gemini** or **DeepSeek (API key)**, then
+paste the key (**Get a key** opens the right page):
 
-## Configuration (Preferences → Add-ons → Free Plugin Blender)
+| Provider | Get a key | Environment variable |
+|---|---|---|
+| OpenAI | <https://platform.openai.com/api-keys> | `OPENAI_API_KEY` |
+| Gemini | <https://aistudio.google.com/apikey> (free tier with limited quota) | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
+| DeepSeek | <https://platform.deepseek.com/api_keys> | `DEEPSEEK_API_KEY` |
 
-Les préférences sont organisées en trois étapes :
+The model list is read live from the provider (the newest model is selected by default). The agent
+loop runs inside the extension with the built-in tools, so Claude Code and `mcp-for-blender`
+aren't needed. Requests are billed to your account with that provider.
 
-1. **Claude, avec ton abonnement.** Bouton *Connect my Claude subscription* :
-   la connexion se fait dans le navigateur via Claude Code (`claude auth
-   login`), sans clé API. L'état s'affiche ensuite (« Claude Pro · ton
-   e-mail ») ; *Disconnect* te déconnecte. Si Claude Code n'est pas installé,
-   *How to install Claude Code* copie la commande d'installation et ouvre la page.
-2. **fal.ai**, pour générer images, matériaux, 3D et vidéos (paiement à
-   l'usage). *Get a key* ouvre <https://fal.ai/dashboard/keys>. C'est
-   optionnel : le chat, Poly Haven et les outils de maillage marchent sans.
-   La clé **Meshy** est facultative : elle sert seulement si tu as des crédits
-   Meshy et préfères les utiliser (3D, rig, retexture) au lieu de fal.ai.
-3. **Blender MCP**, qui permet à Claude d'agir sur la scène : état du port et
-   lien vers l'add-on `mcp-for-blender`.
+> **Coming later:** signing in with a **ChatGPT** or **Gemini subscription** (like the Claude
+> one, no API key), plus OpenRouter and local models (Ollama).
+> See the [roadmap](docs/ROADMAP.md).
 
-Les variables d'environnement `FAL_KEY` et `MESHY_API_KEY` fonctionnent aussi.
+---
 
-Le panneau **Vidéo** est masqué par défaut, car c'est la fonction la plus
-chère. Coche *Show video panel* dans les préférences pour l'afficher.
-L'opérateur `bpy.ops.freeplugin.generate_video` reste appelable depuis un
-script ou par Claude.
+## 🎛️ Using Kiln
 
-## Choisir et ajouter des modèles
+### The viewport prompt bar
 
-Chaque section (Image, Vidéo, 3D) de la sidebar a son **menu de modèles**, avec le prix
-indicatif. Le panneau Matériau utilise le modèle choisi dans Image. Sous le
-menu, **Options** affiche les réglages propres au modèle choisi (durée, ratio,
-qualité, seed…), lus dans le schéma publié par fal.ai. Seules les options que
-tu modifies sont envoyées ; les autres gardent leur valeur par défaut chez fal.ai.
+At the bottom of every 3D view there is a pill: **"Describe the scene you imagine…"**.
 
-| Panneau | Modèles inclus |
+<p align="center">
+  <img src="docs/assets/bar-collapsed.png" alt="The collapsed prompt bar at the bottom of the viewport" width="80%">
+</p>
+
+Click it to open the card:
+
+- **Mode tabs** at the top: *Scene* (chat with Claude), *3D*, *Image*, *Material*,
+  *Video* (if enabled), *Animation*, *Assets* (Poly Haven). On the right: the account status
+  (**● Claude Max**), **+** (new conversation) and **⌄** (collapse).
+- **Selected objects** appear as **@mentions** (× to remove one). Claude gets the selection along with your message.
+- At the bottom: **+** (attach the camera view or an image), the **model menu**, quick settings as chips,
+  and in *Scene* mode the Claude model, the effort, the tokens of the last answer and the round **send** button.
+
+**Enter** sends, **Shift+Enter** adds a new line, **Esc** closes. While you type, Blender
+shortcuts are paused. Click anywhere else to give them back.
+
+### Building a scene with Claude
+
+Ask in plain language, in any language. Claude looks at the scene, then builds it.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/chat-working.png" alt="Claude is working: the current step is shown live"></td>
+    <td width="50%"><img src="docs/assets/chat-tool-failed.png" alt="Folded tool calls, expanded to show a failed action"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>While Claude works, the current step is shown live. <b>■</b> stops it.</sub></td>
+    <td align="center"><sub>Tool calls are folded into one line. Click to expand. A red ✕ marks a failure.</sub></td>
+  </tr>
+</table>
+
+Claude can model with Python, inspect the scene, take screenshots, and call every Kiln operator
+(Poly Haven, image, material and 3D generation…). Generations it starts are billed to
+your fal.ai account like the ones you start yourself.
+
+### Generating images, materials, 3D and video
+
+Switch to the **Image**, **Material**, **3D**, **Video** or **Animation** tab, type a prompt, pick a model, and
+check the **price shown next to the Generate button** before you click.
+
+<p align="center">
+  <img src="docs/assets/image-mode.png" alt="Image mode: camera view attached, Seedream 4.5, ratio and resolution chips, $0.04 / image, Generate" width="90%">
+</p>
+
+Attach the **camera view** with **+** to generate from what the camera sees (image → image,
+image → 3D, image → video).
+
+### The sidebar
+
+Press **N** in the 3D view and open the **Free Plugin** tab: a status header (fal.ai, Claude Code,
+MCP, Meshy), tabs **Scene · 3D · Image · Video · Animation · Assets**, every model option, and the
+**Generations** history.
+
+<details>
+<summary><b>Animation in detail</b></summary>
+
+The character is the **active object** (its mesh or its armature) and must face **-Y** (a Meshy
+requirement).
+
+- **Presets** (~$0.32): 678 Meshy animations (walk, run, dance, combat, everyday gestures…)
+  with search, category and an *In place* filter.
+  - **Unrigged** character: Meshy rigs and animates it. The rigged copy replaces the original,
+    which is hidden, not deleted.
+  - **Rigged** character: the motion is copied onto your rig as a new *action*.
+- **Free motion** (~$0.08): describe a motion ("a joyful jump"), 0.5 to 12 s. Hunyuan Motion
+  generates it, then it is retargeted onto your rig.
+- **Copy a motion** (free): select the animated armature, Ctrl+click the target, *Copy motion*.
+  It recognises SMPL, Meshy, Mixamo, Rigify and Unreal bone names (at least 8 shared joints).
+
+Every motion is an action kept in the .blend (*fake user*).
+</details>
+
+<details>
+<summary><b>Choosing and adding models</b></summary>
+
+| Panel | Built-in models |
 |---|---|
 | Image | Seedream 4.5, Nano Banana, Nano Banana Pro, FLUX.2, Qwen Image, FLUX.1 schnell |
-| Vidéo | Kling 3.0 Pro/Standard, Kling 2.5 Turbo, Veo 3.1 / Fast, Seedance 1 Pro, Hailuo 02, Wan 2.2 |
-| 3D | TRELLIS, TRELLIS 2, Tripo H3.1, Hunyuan3D 3.1 Pro, Meshy 7 (fal.ai), Meshy (ta clé) |
+| Video | Kling 3.0 Pro / Standard, Kling 2.5 Turbo, Veo 3.1 / Fast, Seedance 1 Pro, Hailuo 02, Wan 2.2 |
+| 3D | TRELLIS, TRELLIS 2, Tripo H3.1, Hunyuan3D 3.1 Pro, Meshy 7 (fal.ai), Meshy (your key) |
 
-**Réglages simples** : sous le menu de modèle (sidebar) et en puces dans la barre,
-des réglages communs à tous les modèles, traduits vers les vrais champs de chacun :
+**Quick settings** work the same for every model and are translated to each model's own fields:
 
-| Mode | Réglages |
+| Mode | Settings |
 |---|---|
-| Image | Ratio, Résolution (1K/2K/4K), Qualité (Low/Medium/High), Format (PNG/JPEG/WebP) |
-| 3D | Mode (Preview = forme seule / Full = texturé), Type (Standard / Low-poly / Smart topology), Topologie (triangles / quads), Détail (nombre de polygones), PBR, Texture |
-| Vidéo | Durée et résolution (celles que le modèle propose), Ratio, Audio |
+| Image | Ratio, Resolution (1K/2K/4K), Quality, Format (PNG/JPEG/WebP) |
+| 3D | Mode (Preview / Full), Type (Standard / Low-poly / Smart topology), Topology, Detail, PBR, Texture |
+| Video | Duration, Resolution, Ratio, Audio |
 
-*Auto* garde la valeur par défaut du modèle. Un réglage que le modèle choisi ne
-sait pas faire est grisé dans la sidebar et absent de la barre ; une valeur
-qu'un nouveau modèle n'accepte pas (une durée de 15 s, par exemple) n'est pas
-envoyée. Les réglages priment sur la même option dans *Advanced*.
+**Any other fal.ai model:** choose *Other fal.ai model…*, paste its id (e.g. `fal-ai/flux/dev`)
+and click ⟳. Its options appear automatically.
 
-**N'importe quel autre modèle fal.ai** : choisis *Other fal.ai model…*, colle
-son identifiant (par exemple `fal-ai/flux/dev`) et clique sur ⟳. Ses options
-apparaissent automatiquement.
-
-**L'ajouter au menu pour de bon** : *Preferences → Open my models.json*, puis
-*Reload models* :
+**Add it to the menu for good:** *Preferences → Open my models.json*, then *Reload models*:
 
 ```json
 {
@@ -119,165 +368,19 @@ apparaissent automatiquement.
 }
 ```
 
-`text` est l'endpoint utilisé avec un prompt seul, `image` celui utilisé avec
-une image en entrée ; `defaults` pré-règle des options (par exemple
-`{"generate_audio": false}`). Une entrée qui reprend la `key` d'un modèle
-intégré le remplace.
+`text` is the endpoint used with a prompt only, `image` the one used with an input image, and
+`defaults` presets options (e.g. `{"generate_audio": false}`). An entry reusing a built-in `key`
+replaces it.
+</details>
 
-Pour les mainteneurs : après avoir modifié `free_plugin_blender/data/models.json`,
-`python3 scripts/refresh_schemas.py` régénère les schémas embarqués.
+<details>
+<summary><b>Driving Blender from Claude Code in a terminal</b></summary>
 
-## La barre de prompt dans le viewport
+The built-in MCP server also works from a terminal: in the preferences, pick a fixed
+**Free Plugin MCP port**, tick **Keep on for the terminal**, then **Copy the terminal command**
+copies the `claude mcp add --transport http …` command with its token.
 
-En bas de chaque vue 3D, une pilule **« Describe the scene you imagine… »**,
-centrée dans l'espace libre entre la barre d'outils et la sidebar.
-Clique dessus : elle s'ouvre en carte avec
-
-- en haut, les **onglets de mode** : *Scene* (chat avec Claude), *3D*, *Image*,
-  *Material*, *Video* (si activé), *Animation*, *Assets* (Poly Haven) ; à droite
-  l'état du compte (« ● Claude Max »), **+** (nouvelle conversation) et **⌄** (replier) ;
-- la conversation : tes messages en bulles, les réponses avec l'icône de Claude
-  et un peu de Markdown (**gras**, `code`, listes) ; les appels d'outils d'une
-  réponse sont **repliés en une ligne** (« 3 actions · … ✓ », clic pour les voir,
-  ✕ rouge si l'un a échoué) ; pendant une réponse, l'étape en cours s'affiche ;
-- quand un réglage manque (Claude non connecté, add-on MCP éteint, clé absente),
-  un **bandeau** explique le problème en une phrase, avec le bouton qui le règle ;
-- le champ : les objets sélectionnés en **@mentions** (× pour en retirer un ;
-  Claude reçoit la sélection avec ton message), puis le texte ;
-- en bas du champ, **+** (vue caméra ou image), le **menu de modèle**, les
-  réglages en puces ; en mode *Scene*, le modèle Claude (Opus 5.5 par défaut,
-  Fable 5.1, Opus 5, Sonnet 5.5, Sonnet 5, Haiku 5.5) et l'**effort** (Low, Medium par
-  défaut, High, XHigh, Max), les tokens de la dernière réponse et le bouton
-  d'envoi rond (Stop pendant une réponse) ; dans les modes de génération, le
-  **prix juste à côté du bouton Generate**.
-
-Entrée envoie, Maj+Entrée va à la ligne, Échap ferme. Pendant la saisie, les
-raccourcis de Blender sont suspendus ; un clic ailleurs rend la main à Blender.
-La barre se désactive dans les préférences (*Viewport prompt bar*).
-
-## La sidebar
-
-Onglet **Free Plugin** (N) : en-tête d'état (fal.ai, Claude Code, MCP, Meshy),
-onglets **Scene · 3D · Image · Video · Animation · Assets**, sections repliables
-(3D Model, Auto-Rig, Retexture, Mesh tools, Image, Material…) avec toutes les
-options des modèles, et l'historique **Generations**.
-
-## Animation
-
-Onglet **Animation** de la sidebar, et mode *Animation* de la barre. Le
-personnage est l'**objet actif** : son maillage ou son armature. Il doit
-regarder vers **-Y** dans Blender (exigence de Meshy).
-
-- **Presets** (~0,32 $) : 678 animations de la bibliothèque Meshy (marche,
-  course, danse, combat, gestes du quotidien…), avec recherche, catégorie et
-  filtre *In place* (mouvements sur place). *Animate* applique le preset choisi.
-  - Personnage **sans rig** : Meshy le rigge et l'anime. Le personnage riggé
-    remplace le maillage d'origine (caché, pas supprimé) et devient l'objet actif.
-  - Personnage **avec rig** : le mouvement est copié sur ce rig, comme une
-    nouvelle *action* nommée d'après le preset.
-  - fal.ai n'a pas d'endpoint pour animer un rig existant : chaque preset refait
-    le rig chez Meshy, d'où le prix.
-- **Mouvement libre** (~0,08 $) : décris un mouvement (« a joyful jump »),
-  de 0,5 à 12 s. Hunyuan Motion le génère sur un mannequin, puis il est copié
-  sur le rig du personnage. Sans rig, le mannequin animé est gardé, au curseur 3D.
-  Dans la barre : le texte, la puce *Duration* et la puce du rig visé.
-- **Copier un mouvement** (gratuit) : sélectionne l'armature animée, puis
-  Ctrl+clic sur celle qui reçoit le mouvement, et *Copy motion*.
-
-Chaque mouvement est une action gardée dans le .blend (*fake user*) : le menu
-*Motion* de la section *Character* passe de l'une à l'autre. La copie reconnaît
-les noms d'os SMPL, Meshy, Mixamo, Rigify et Unreal ; il faut au moins 8
-articulations communes.
-
-## Chat avec Claude
-
-Le mode *Scene builder* de la barre, et la section *Chat with Claude* de
-l'onglet Scene, envoient tes messages à **Claude Code**, sur ton abonnement
-Claude, sans clé API. Claude agit sur la scène à travers un serveur MCP
-Blender : il modélise en Python, inspecte la scène et appelle les opérateurs du
-plugin (Poly Haven, génération d'images, de matériaux, 3D…).
-
-Prérequis :
-1. [Claude Code](https://claude.com/claude-code) installé, et ton abonnement connecté (bouton *Connect my Claude subscription*).
-2. En mode par défaut : l'add-on Blender de [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/)
-   activé dans Blender (il ouvre le port 9876), et [`uv`](https://docs.astral.sh/uv/)
-   installé pour lancer `uvx mcp-for-blender`. Pas nécessaire en mode *Free Plugin tools only*.
-
-### Les outils de Claude (Preferences → *3 · Blender MCP*)
-
-| Mode | Claude reçoit | Pour qui |
-|---|---|---|
-| **mcp-for-blender** (défaut) | les outils de `mcp-for-blender` | le plus complet, comme avant |
-| **mcp-for-blender + Free Plugin tools** | les deux ; il prend les nôtres d'abord | moins de tokens, rien en moins |
-| **Free Plugin tools only (lighter)** | seulement les outils intégrés | le moins de tokens, sans `uv` ni `mcp-for-blender` |
-
-Le serveur MCP intégré tourne dans le plugin, sur `127.0.0.1`, avec un port par
-Blender (automatique) et un jeton secret : il n'atteint jamais un autre Blender.
-Ses outils sont compacts : `scene_summary`, `object_info`, `add_object`,
-`edit_object`, `set_material`, `screenshot`, `generate` (attend le résultat),
-`assets` (Poly Haven), `find_presets`, `task_status`, `plugin_status`, et
-`run_python` en dernier recours. Ce qui leur manque (Sketchfab, Poly Pizza…)
-reste disponible avec le mode à deux serveurs.
-
-Sous le chat, *Last answer : … tokens* montre ce que la dernière réponse a coûté :
-de quoi comparer les modes sur une même demande.
-
-Dans la sidebar, *Transcript* copie toute la
-conversation dans le Text Editor, *New* repart de zéro. La conversation est
-enregistrée dans le fichier .blend.
-
-Réglages dans *Preferences → Add-ons → Free Plugin Blender* : modèle Claude et
-effort (aussi dans la barre et la sidebar), chemin de `claude`, commande et port
-du serveur MCP. Plus d'effort : de meilleurs résultats sur les scènes difficiles,
-mais des réponses plus lentes et plus d'usage de ton abonnement.
-
-Sécurité : le chat lance `claude -p` avec tous les outils intégrés désactivés
-(`--tools ""`), seulement le serveur MCP Blender chargé et autorisé
-(`--strict-mcp-config`, `--permission-mode dontAsk`). Ce serveur peut exécuter
-du Python dans Blender : c'est ce qui permet à Claude de construire la scène,
-mais ce Python a les mêmes droits que Blender sur ta machine.
-
-Si plusieurs Blender sont ouverts, le serveur MCP joint celui qui détient le
-port. Chaque Blender a donc un identifiant que Claude vérifie avant de modifier
-quoi que ce soit. Pour en piloter plusieurs, donne à chacun son propre port
-(add-on MCP et préférence *MCP add-on port*).
-
-### Chatter avec une clé API (OpenAI, Gemini, DeepSeek)
-
-Dans *Preferences → 1 · Chat*, *Chat with* : **Claude (subscription)** (défaut,
-via Claude Code), **OpenAI**, **Gemini** ou **DeepSeek** (API key). Avec une clé :
-
-- colle ta clé (*Get a key* ouvre la page du fournisseur), ou la variable
-  d'environnement : `OPENAI_API_KEY` ; `GEMINI_API_KEY` ou `GOOGLE_API_KEY` ;
-  `DEEPSEEK_API_KEY`.
-  Une clé Gemini se crée gratuitement sur <https://aistudio.google.com/apikey>
-  (avec un quota gratuit limité) ;
-- la **liste des modèles est lue en direct** chez le fournisseur (le plus récent est
-  choisi par défaut, chaque fournisseur garde son choix) : menu de modèle dans la
-  barre et la sidebar, *Refresh the model list* ;
-- l'effort (Low… Max) devient le `reasoning_effort` du modèle ; un modèle qui ne
-  raisonne pas est appelé sans ;
-- la boucle d'agent tourne dans le plugin, avec les **outils Free Plugin intégrés**
-  (les mêmes que le serveur MCP) : Claude Code et `mcp-for-blender` ne servent pas ;
-- chaque requête est payée sur ton compte du fournisseur ; *Last answer* montre les
-  tokens du tour entier (toutes les étapes).
-- Gemini passe par son endpoint compatible OpenAI ; les « thought signatures » de
-  Gemini 3 sont renvoyées avec l'historique, comme il l'exige pour les outils.
-- DeepSeek : son raisonnement (`reasoning_content`) est renvoyé avec l'historique,
-  comme il l'exige ; l'effort devient Low / High / Max ; il ne lit pas les images,
-  donc l'outil de capture ne lui est pas proposé. Si sa liste de modèles n'est pas
-  disponible, `deepseek-flash` et `deepseek-v4-pro` sont proposés.
-- Changer de fournisseur au milieu d'une conversation repart d'un contexte neuf
-  (la conversation affichée reste) : chaque fournisseur a ses propres champs.
-
-## Piloter depuis Claude Code (terminal)
-
-Le serveur intégré marche aussi depuis Claude Code dans un terminal : dans les
-préférences, choisis un port fixe, coche *Keep on for the terminal*, puis
-*Copy the terminal command* copie la commande `claude mcp add --transport http …`
-avec le jeton.
-
-Avec `mcp-for-blender`, Claude appelle directement les opérateurs :
+With `mcp-for-blender`, Claude can call the operators directly:
 
 ```python
 bpy.ops.freeplugin.generate_image(prompt="a moroccan riad courtyard at dusk")
@@ -285,66 +388,129 @@ bpy.ops.freeplugin.generate_texture(prompt="green zellige tiles")
 bpy.ops.freeplugin.generate_3d(prompt="a clay tagine pot", model="trellis")
 bpy.ops.freeplugin.generate_video(prompt="slow dolly in", model="kling25_turbo",
                                   options='{"duration": "10"}')
-bpy.ops.freeplugin.animate_preset(preset_id=106)   # id de data/animations.json
+bpy.ops.freeplugin.animate_preset(preset_id=106)   # id from data/animations.json
 bpy.ops.freeplugin.generate_motion(prompt="a joyful jump", duration=3)
 ```
 
-`model` accepte une clé du catalogue ou n'importe quel identifiant fal.ai,
-`options` un objet JSON d'options du modèle. Ces opérateurs rendent la main
-immédiatement ; le résultat se lit ensuite ici :
+These operators return immediately. Read the results with
+`json.loads(bpy.context.window_manager.get("free_plugin_tasks", "[]"))`.
+</details>
 
-```python
-import json; json.loads(bpy.context.window_manager.get("free_plugin_tasks", "[]"))
+---
+
+## 💰 Pricing
+
+Kiln is free and open source. You only pay the providers you choose, at their own prices:
+
+| Model (3D) | Input | fal.ai cost | Notes |
+|---|---|---|---|
+| **TRELLIS** | image | ~$0.02 | Cheapest, great for iterating |
+| **TRELLIS 2** | image | ~$0.30 | Finer, clean UVs and remesh |
+| **Tripo H3.1** | text or image | ~$0.30 | Good topology, PBR |
+| **Hunyuan3D 3.1 Pro** | text or image | ~$0.38 (+$0.15 PBR) | Best textures |
+
+TRELLIS only takes an image: with a text prompt, Kiln first draws a reference image with Seedream
+(+$0.04), so a text → 3D model with TRELLIS costs about **$0.06**.
+
+Prices were checked in October 2026 and may change. See [fal.ai/pricing](https://fal.ai/pricing) and
+[meshy.ai/pricing](https://www.meshy.ai/pricing). The **video panel is hidden by default**
+because it is the most expensive feature. Tick *Show video panel* in the preferences to show it.
+
+## ❓ FAQ & troubleshooting
+
+<details>
+<summary><b>Generation fails with an authentication or "insufficient balance" error</b></summary>
+
+Check that you pasted the **whole** fal.ai key (id **and** secret, around the `:`), and that your
+fal.ai account has **credits** on <https://fal.ai/dashboard/billing>.
+</details>
+
+<details>
+<summary><b>"Claude Code is not installed" even though I installed it</b></summary>
+
+Restart Blender so it picks up your new `PATH`, or set **Advanced → Claude Code path** to the
+`claude` executable (`which claude` in a terminal shows it).
+</details>
+
+<details>
+<summary><b>Claude answers but nothing changes in the scene</b></summary>
+
+Claude can't reach Blender. Either enable the `mcp-for-blender` add-on (port 9876), or switch
+**3 · Blender MCP** to **Free Plugin tools only**. The bar's banner and its **Fix it** button tell
+you which.
+</details>
+
+<details>
+<summary><b>I have several Blender windows open</b></summary>
+
+The MCP server talks to the Blender that holds the port. Each Blender has an id that Claude checks
+before editing anything. To drive several, give each its own port.
+</details>
+
+<details>
+<summary><b>Is it safe?</b></summary>
+
+The chat runs `claude -p` with every built-in Claude Code tool disabled, and only the Blender MCP
+server loaded and allowed. That server can run Python inside Blender (this is how Claude builds
+scenes), and that Python has the same rights as Blender on your machine. Your keys never leave your
+computer except to go to the provider they belong to.
+</details>
+
+---
+
+## 🛠️ Development
+
+```bash
+uvx ruff@0.14.0 check .
+python3 -m pytest -q                                           # no Blender
+python3 scripts/run_blender_tests.py --blender /path/to/blender # headless Blender
+python3 scripts/run_gui_tests.py --blender /path/to/blender     # real clicks, opens a window
+python3 scripts/build.py                                       # builds dist/free_plugin_blender-X.Y.Z.zip
 ```
 
-## Structure
+- Every change goes through a pull request to the protected `main` branch
+  ([`feature-pr`](.claude/skills/feature-pr/SKILL.md) workflow). CI runs `lint`, `unit-tests`
+  and `blender-tests`.
+- **Release:** bump `version` in `free_plugin_blender/blender_manifest.toml`, merge, then push the
+  tag `vX.Y.Z`. The *Release* workflow tests, builds and publishes the zip.
+- After editing `free_plugin_blender/data/models.json`, run `python3 scripts/refresh_schemas.py`.
+- Roadmap: [docs/ROADMAP.md](docs/ROADMAP.md).
+
+<details>
+<summary><b>Project structure</b></summary>
 
 ```
 free_plugin_blender/
-  __init__.py         enregistrement
-  prefs.py            clés, dossier de sortie, accès au catalogue
-  account.py          connexion de l'abonnement Claude (claude auth)
-  chat.py             chat : claude -p + serveurs MCP selon le mode, ou l'agent à clé API
-  agent.py            boucle d'agent (modèle → outils → modèle), sans bpy
-  api_models.py       listes de modèles des fournisseurs à clé API, en cache
-  mcpserver/          serveur MCP intégré : protocol.py, httpserver.py (sans bpy), tools.py
-  overlay/            barre de prompt du viewport (gpu/blf, champ texte, modal)
-  catalog.py          catalogue de modèles (data/models.json + ton models.json)
-  params.py           menus de modèles et options générées depuis les schémas
-  controls.py         réglages simples → champs de chaque modèle (sans bpy)
-  ui_controls.py      ces réglages dans la sidebar et la barre
-  data/               models.json, animations.json et schémas fal.ai embarqués
-  props.py            réglages du panneau (scene.free_plugin)
-  operators.py        un opérateur par bouton (bpy.ops.freeplugin.*)
-  animation.py        presets, mouvement libre, copie de mouvement
-  presets.py          bibliothèque d'animations Meshy et recherche (sans bpy)
-  rigmap.py           articulations humanoïdes d'après les noms d'os (sans bpy)
-  retarget.py         copie d'un mouvement d'une armature à une autre
-  panels.py           sidebar N
-  tasks.py            réseau dans un thread, scène sur le thread principal
-  scene.py            import GLB, matériaux, HDRI, plan image, strip vidéo
-  net.py              HTTP stdlib, téléchargement, data URI
-  providers/          fal.py, fal_schema.py, meshy.py, polyhaven.py, openai_compat.py (sans bpy)
+  __init__.py         registration
+  prefs.py            keys, output folder, catalog access
+  account.py          Claude subscription sign-in (claude auth)
+  chat.py             chat: claude -p + MCP servers per mode, or the API-key agent
+  agent.py            agent loop (model → tools → model), no bpy
+  api_models.py       live model lists of API-key providers, cached
+  mcpserver/          built-in MCP server: protocol.py, httpserver.py (no bpy), tools.py
+  overlay/            viewport prompt bar (gpu/blf, text field, modal)
+  catalog.py          model catalog (data/models.json + your models.json)
+  params.py           model menus and options generated from schemas
+  controls.py         quick settings → each model's fields (no bpy)
+  ui_controls.py      those settings in the sidebar and the bar
+  data/               models.json, animations.json and embedded fal.ai schemas
+  props.py            panel settings (scene.free_plugin)
+  operators.py        one operator per button (bpy.ops.freeplugin.*)
+  animation.py        presets, free motion, motion copy
+  presets.py          Meshy animation library and search (no bpy)
+  rigmap.py           humanoid joints from bone names (no bpy)
+  retarget.py         motion copy from one armature to another
+  panels.py           N sidebar
+  tasks.py            network on a worker thread, scene on the main thread
+  scene.py            GLB import, materials, HDRI, image plane, video strip
+  net.py              stdlib HTTP, downloads, data URIs
+  providers/          fal.py, fal_schema.py, meshy.py, polyhaven.py, openai_compat.py (no bpy)
 ```
+</details>
 
-## Développement
+## 📄 License
 
-- Chaque changement passe par une pull request vers `main`, qui est protégée.
-  La marche à suivre est dans le skill [`feature-pr`](.claude/skills/feature-pr/SKILL.md).
-- Tests :
+[GPL-3.0-or-later](LICENSE). Poly Haven assets are CC0. Generated content is subject to each
+provider's terms.
 
-  ```bash
-  uvx ruff@0.14.0 check .
-  python3 -m pytest -q                                           # sans Blender
-  python3 scripts/run_blender_tests.py --blender /chemin/blender # Blender sans interface
-  python3 scripts/run_gui_tests.py --blender /chemin/blender     # vrais clics, ouvre une fenêtre
-  ```
-
-- La CI (GitHub Actions) lance `lint`, `unit-tests` et `blender-tests` sur chaque PR.
-- Release : augmenter `version` dans `blender_manifest.toml`, fusionner dans `main`,
-  puis pousser le tag `vX.Y.Z`. Le workflow *Release* publie le zip.
-- Feuille de route : [docs/ROADMAP.md](docs/ROADMAP.md).
-
-## Licence
-
-GPL-3.0-or-later.
+<p align="center"><sub>Banner generated with Seedream 5.0 Pro on Higgsfield AI.</sub></p>
