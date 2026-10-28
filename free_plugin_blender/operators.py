@@ -18,7 +18,7 @@ from pathlib import Path
 
 import bpy
 
-from . import catalog, net, prefs, scene, tasks
+from . import account, catalog, chat, net, prefs, scene, tasks
 from .providers import fal, meshy, polyhaven
 
 TEXTURE_PROMPT = ("Seamless tileable PBR albedo texture of {}, flat even lighting, "
@@ -507,6 +507,149 @@ class FREEPLUGIN_OT_local_lods(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class FREEPLUGIN_OT_chat_send(bpy.types.Operator):
+    bl_idname = "freeplugin.chat_send"
+    bl_label = "Send"
+    bl_description = "Send the message to Claude Code"
+
+    text: bpy.props.StringProperty(options={"SKIP_SAVE"})
+
+    def execute(self, context):
+        props = context.scene.free_plugin
+        text = self.text or props.chat_input
+        error = chat.send(text, context.scene)
+        if error:
+            self.report({"WARNING"}, error)
+            return {"CANCELLED"}
+        if not self.text:
+            props.chat_input = ""
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_chat_stop(bpy.types.Operator):
+    bl_idname = "freeplugin.chat_stop"
+    bl_label = "Stop"
+    bl_description = "Stop Claude's current answer"
+
+    def execute(self, context):
+        chat.stop()
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_chat_reset(bpy.types.Operator):
+    bl_idname = "freeplugin.chat_reset"
+    bl_label = "New conversation"
+    bl_description = "Forget this conversation and start a new one"
+
+    def execute(self, context):
+        chat.reset()
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_chat_transcript(bpy.types.Operator):
+    bl_idname = "freeplugin.chat_transcript"
+    bl_label = "Full transcript"
+    bl_description = "Copy the whole conversation into the text block \"Free Plugin Chat\" (Text Editor)"
+
+    def execute(self, context):
+        name = chat.write_transcript()
+        for area in context.screen.areas:
+            if area.type == "TEXT_EDITOR":
+                area.spaces.active.text = bpy.data.texts[name]
+                break
+        else:
+            self.report({"INFO"}, f'Open a Text Editor and pick "{name}"')
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_claude_connect(bpy.types.Operator):
+    bl_idname = "freeplugin.claude_connect"
+    bl_label = "Connect my Claude subscription"
+    bl_description = "Sign in with your Claude account (Pro/Max) in the browser, through Claude Code. No API key"
+
+    def execute(self, context):
+        error = account.login()
+        if error:
+            self.report({"WARNING"}, error)
+            return {"CANCELLED"}
+        self.report({"INFO"}, "Finish signing in in your browser")
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_claude_send_code(bpy.types.Operator):
+    bl_idname = "freeplugin.claude_send_code"
+    bl_label = "Send code"
+    bl_description = "Send the code shown in the browser to finish signing in"
+
+    def execute(self, context):
+        props = context.scene.free_plugin
+        error = account.send_code(props.auth_code)
+        if error:
+            self.report({"WARNING"}, error)
+            return {"CANCELLED"}
+        props.auth_code = ""
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_claude_cancel(bpy.types.Operator):
+    bl_idname = "freeplugin.claude_cancel"
+    bl_label = "Cancel sign-in"
+
+    def execute(self, context):
+        account.cancel_login()
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_claude_disconnect(bpy.types.Operator):
+    bl_idname = "freeplugin.claude_disconnect"
+    bl_label = "Disconnect"
+    bl_description = "Sign out of Claude Code on this computer (also signs out the terminal claude)"
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event, message="Sign out of Claude Code on this computer?")
+
+    def execute(self, context):
+        error = account.logout()
+        if error:
+            self.report({"WARNING"}, error)
+            return {"CANCELLED"}
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_claude_refresh(bpy.types.Operator):
+    bl_idname = "freeplugin.claude_refresh"
+    bl_label = "Check again"
+    bl_description = "Look for Claude Code and its sign-in again"
+
+    def execute(self, context):
+        account.refresh(force=True)
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_claude_install(bpy.types.Operator):
+    bl_idname = "freeplugin.claude_install"
+    bl_label = "How to install Claude Code"
+    bl_description = "Copy the install command to the clipboard and open the Claude Code page"
+
+    def execute(self, context):
+        context.window_manager.clipboard = account.INSTALL_COMMAND
+        bpy.ops.wm.url_open(url=account.INSTALL_URL)
+        self.report({"INFO"}, f"Copied: {account.INSTALL_COMMAND} — paste it in a terminal, then Check again")
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_open_url(bpy.types.Operator):
+    bl_idname = "freeplugin.open_url"
+    bl_label = "Open"
+    bl_options = {"INTERNAL"}
+
+    url: bpy.props.StringProperty()
+
+    def execute(self, context):
+        bpy.ops.wm.url_open(url=self.url)
+        return {"FINISHED"}
+
+
 class FREEPLUGIN_OT_open_outputs(bpy.types.Operator):
     bl_idname = "freeplugin.open_outputs"
     bl_label = "Open output folder"
@@ -539,6 +682,17 @@ classes = (
     FREEPLUGIN_OT_polyhaven_apply,
     FREEPLUGIN_OT_local_remesh,
     FREEPLUGIN_OT_local_lods,
+    FREEPLUGIN_OT_chat_send,
+    FREEPLUGIN_OT_chat_stop,
+    FREEPLUGIN_OT_chat_reset,
+    FREEPLUGIN_OT_chat_transcript,
+    FREEPLUGIN_OT_claude_connect,
+    FREEPLUGIN_OT_claude_send_code,
+    FREEPLUGIN_OT_claude_cancel,
+    FREEPLUGIN_OT_claude_disconnect,
+    FREEPLUGIN_OT_claude_refresh,
+    FREEPLUGIN_OT_claude_install,
+    FREEPLUGIN_OT_open_url,
     FREEPLUGIN_OT_open_outputs,
     FREEPLUGIN_OT_clear_tasks,
 )

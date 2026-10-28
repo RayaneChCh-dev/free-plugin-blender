@@ -2,8 +2,8 @@
 
 Extension Blender (4.2+, testée sur 5.2) pour générer **images, matériaux,
 vidéos et modèles 3D avec tes propres clés API**, sans abonnement à une
-plateforme intermédiaire. Le pilotage de Blender par l'IA passe par **Claude
-Code** (ton abonnement Claude) et un add-on MCP.
+plateforme intermédiaire, et pour **discuter avec Claude dans Blender** sur ton
+abonnement Claude (via Claude Code et un add-on MCP).
 
 | Fonction | Fournisseur | Modèle par défaut | Coût indicatif |
 |---|---|---|---|
@@ -43,18 +43,26 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.3.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.4.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
-## Clés API
+## Configuration (Preferences → Add-ons → Free Plugin Blender)
 
-*Preferences → Add-ons → Free Plugin Blender* :
+Les préférences sont organisées en trois étapes :
 
-- **fal.ai** : créer une clé sur <https://fal.ai/dashboard/keys>. Facturation à l'usage.
-- **Meshy** (optionnel, seulement pour la retexture ou si tu as des crédits) : <https://www.meshy.ai/settings/api>.
+1. **Claude, avec ton abonnement.** Bouton *Connect my Claude subscription* :
+   la connexion se fait dans le navigateur via Claude Code (`claude auth
+   login`), sans clé API. L'état s'affiche ensuite (« Claude Pro · ton
+   e-mail ») ; *Disconnect* te déconnecte. Si Claude Code n'est pas installé,
+   *How to install Claude Code* copie la commande d'installation et ouvre la page.
+2. **fal.ai**, pour générer images, matériaux, 3D et vidéos (paiement à
+   l'usage). *Get a key* ouvre <https://fal.ai/dashboard/keys>. C'est
+   optionnel : le chat, Poly Haven et les outils de maillage marchent sans.
+   La clé **Meshy** n'est utile que pour la retexture.
+3. **Blender MCP**, qui permet à Claude d'agir sur la scène : état du port et
+   lien vers l'add-on `mcp-for-blender`.
 
-Les variables d'environnement `FAL_KEY` et `MESHY_API_KEY` fonctionnent aussi
-et ont l'avantage de ne pas être enregistrées dans les préférences Blender.
+Les variables d'environnement `FAL_KEY` et `MESHY_API_KEY` fonctionnent aussi.
 
 Le panneau **Vidéo** est masqué par défaut, car c'est la fonction la plus
 chère. Coche *Show video panel* dans les préférences pour l'afficher.
@@ -63,7 +71,7 @@ script ou par Claude.
 
 ## Choisir et ajouter des modèles
 
-Chaque panneau (Image, Vidéo, 3D) a son **menu de modèles**, avec le prix
+Chaque section (Image, Vidéo, 3D) de la sidebar a son **menu de modèles**, avec le prix
 indicatif. Le panneau Matériau utilise le modèle choisi dans Image. Sous le
 menu, **Options** affiche les réglages propres au modèle choisi (durée, ratio,
 qualité, seed…), lus dans le schéma publié par fal.ai. Seules les options que
@@ -101,23 +109,81 @@ intégré le remplace.
 Pour les mainteneurs : après avoir modifié `free_plugin_blender/data/models.json`,
 `python3 scripts/refresh_schemas.py` régénère les schémas embarqués.
 
-## Piloter avec Claude Code
+## La barre de prompt dans le viewport
 
-Installe un add-on MCP pour Blender (par exemple l'extension officielle
-**MCP** de Blender Lab, ou `blender-mcp`), connecte-le à Claude Code, puis
-demande par exemple : « génère une texture de zellige et applique-la au sol ».
-Claude appelle les opérateurs :
+En bas de chaque vue 3D, une barre **« Describe the scene you imagine… »**.
+Clique dessus : elle s'ouvre en carte avec
+
+- des **onglets de mode** : *Scene builder* (chat avec Claude), *3D Model*,
+  *Image*, *Material*, *Video* (si activé), *Assets* (Poly Haven) ;
+- la conversation, et **+** en haut à gauche pour en commencer une nouvelle ;
+- en haut à droite, l'état ou le prix : cliquer sur une étiquette rouge
+  (« Connect Claude », « Add fal.ai key »…) ouvre directement la solution ;
+- les objets sélectionnés en **@mentions** (× pour en retirer un) : Claude
+  reçoit la sélection avec ton message ;
+- **+** pour partir de la vue caméra ou d'une image, et le **menu de modèle**
+  avec les prix ;
+- le bouton **Send / Generate / Search** (Stop pendant une réponse de Claude).
+
+Entrée envoie, Maj+Entrée va à la ligne, Échap ferme. Pendant la saisie, les
+raccourcis de Blender sont suspendus ; un clic ailleurs rend la main à Blender.
+La barre se désactive dans les préférences (*Viewport prompt bar*).
+
+## La sidebar
+
+Onglet **Free Plugin** (N) : en-tête d'état (fal.ai, Claude Code, MCP, Meshy),
+onglets **Scene · 3D · Image · Video · Assets**, sections repliables
+(3D Model, Auto-Rig, Retexture, Mesh tools, Image, Material…) avec toutes les
+options des modèles, et l'historique **Generations**.
+
+## Chat avec Claude
+
+Le mode *Scene builder* de la barre, et la section *Chat with Claude* de
+l'onglet Scene, envoient tes messages à **Claude Code**, sur ton abonnement
+Claude, sans clé API. Claude agit sur la scène à travers un serveur MCP
+Blender : il modélise en Python, inspecte la scène et appelle les opérateurs du
+plugin (Poly Haven, génération d'images, de matériaux, 3D…).
+
+Prérequis :
+1. [Claude Code](https://claude.com/claude-code) installé, et ton abonnement connecté (bouton *Connect my Claude subscription*).
+2. L'add-on Blender de [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/)
+   activé dans Blender (il ouvre le port 9876), et [`uv`](https://docs.astral.sh/uv/)
+   installé pour lancer `uvx mcp-for-blender`.
+
+Dans la sidebar, *Transcript* copie toute la
+conversation dans le Text Editor, *New* repart de zéro. La conversation est
+enregistrée dans le fichier .blend.
+
+Réglages dans *Preferences → Add-ons → Free Plugin Blender → Chat* : chemin de
+`claude`, modèle (Opus, Sonnet, Haiku), commande et port du serveur MCP.
+
+Sécurité : le chat lance `claude -p` avec tous les outils intégrés désactivés
+(`--tools ""`), seulement le serveur MCP Blender chargé et autorisé
+(`--strict-mcp-config`, `--permission-mode dontAsk`). Ce serveur peut exécuter
+du Python dans Blender : c'est ce qui permet à Claude de construire la scène,
+mais ce Python a les mêmes droits que Blender sur ta machine.
+
+Si plusieurs Blender sont ouverts, le serveur MCP joint celui qui détient le
+port. Chaque Blender a donc un identifiant que Claude vérifie avant de modifier
+quoi que ce soit. Pour en piloter plusieurs, donne à chacun son propre port
+(add-on MCP et préférence *MCP add-on port*).
+
+## Piloter depuis Claude Code (terminal)
+
+Le même serveur MCP peut être utilisé depuis Claude Code dans le terminal.
+Claude appelle alors directement les opérateurs :
 
 ```python
 bpy.ops.freeplugin.generate_image(prompt="a moroccan riad courtyard at dusk")
 bpy.ops.freeplugin.generate_texture(prompt="green zellige tiles")
 bpy.ops.freeplugin.generate_3d(prompt="a clay tagine pot", model="trellis")
 bpy.ops.freeplugin.generate_video(prompt="slow dolly in", model="kling25_turbo",
-                                          options='{"duration": "10"}')
+                                  options='{"duration": "10"}')
 ```
 
 `model` accepte une clé du catalogue ou n'importe quel identifiant fal.ai,
-`options` un objet JSON d'options du modèle. Ils rendent la main immédiatement. Le résultat se lit ensuite ici :
+`options` un objet JSON d'options du modèle. Ces opérateurs rendent la main
+immédiatement ; le résultat se lit ensuite ici :
 
 ```python
 import json; json.loads(bpy.context.window_manager.get("free_plugin_tasks", "[]"))
@@ -129,6 +195,9 @@ import json; json.loads(bpy.context.window_manager.get("free_plugin_tasks", "[]"
 free_plugin_blender/
   __init__.py         enregistrement
   prefs.py            clés, dossier de sortie, accès au catalogue
+  account.py          connexion de l'abonnement Claude (claude auth)
+  chat.py             chat : claude -p + serveur MCP Blender
+  overlay/            barre de prompt du viewport (gpu/blf, champ texte, modal)
   catalog.py          catalogue de modèles (data/models.json + ton models.json)
   params.py           menus de modèles et options générées depuis les schémas
   data/               models.json et schémas fal.ai embarqués
@@ -151,6 +220,7 @@ free_plugin_blender/
   uvx ruff@0.14.0 check .
   python3 -m pytest -q                                           # sans Blender
   python3 scripts/run_blender_tests.py --blender /chemin/blender # Blender sans interface
+  python3 scripts/run_gui_tests.py --blender /chemin/blender     # vrais clics, ouvre une fenêtre
   ```
 
 - La CI (GitHub Actions) lance `lint`, `unit-tests` et `blender-tests` sur chaque PR.
