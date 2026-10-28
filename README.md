@@ -81,7 +81,7 @@ Each step is explained in detail below.
 | [Blender](https://www.blender.org/download/) **4.2 or newer** (tested on 5.2) | everything | ✅ yes |
 | A **Claude Pro or Max** subscription + [Claude Code](https://claude.com/claude-code) | chatting with Claude | for the Claude chat |
 | A **fal.ai** account **with credits** + an API key | images, materials, 3D, rigging, animation, video | for generation |
-| The [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/) add-on + [`uv`](https://docs.astral.sh/uv/) | lets Claude act on the scene (default mode) | optional, see [step 5](#step-5-let-claude-act-on-the-scene-blender-mcp) |
+| The [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/) add-on + [`uv`](https://docs.astral.sh/uv/) | the *mcp-for-blender* tool mode (the default mode needs nothing) | optional, see [step 5](#step-5-let-claude-act-on-the-scene-blender-mcp) |
 | An OpenAI, Gemini or DeepSeek API key | chatting with another model instead of Claude | optional |
 
 Poly Haven assets and the local mesh tools work with **no account at all**.
@@ -213,14 +213,15 @@ Claude edits your scene through an MCP server. In **3 · Blender MCP**, choose
 
 | Mode | Claude gets | Extra install | Best for |
 |---|---|---|---|
-| **mcp-for-blender** (default) | the full `mcp-for-blender` toolset | `uv` + the `mcp-for-blender` add-on | the most complete toolset |
-| **mcp-for-blender + Free Plugin tools** | both, and it uses ours first | same | fewer tokens, nothing missing |
-| **Free Plugin tools only (lighter)** | only the built-in tools | **none** | the simplest setup and the fewest tokens |
+| **Free Plugin tools only (lighter)** (default) | only the built-in tools | **none** | the simplest setup and the fewest tokens |
+| **mcp-for-blender** | the full `mcp-for-blender` toolset | `uv` + the `mcp-for-blender` add-on | the most complete toolset |
+| **mcp-for-blender + Free Plugin tools** | both, and it uses ours first | same | nothing missing, but the heaviest context |
 
-**Simplest setup:** pick **Free Plugin tools only**. Nothing else to install. The built-in
-server runs inside Blender on `127.0.0.1` with a secret token.
+**Default mode (Free Plugin tools only):** nothing to install. The built-in server runs inside
+Blender on `127.0.0.1` with a secret token. In our measurements it sends about 2× fewer tokens
+than mcp-for-blender with Opus 5.5 ([docs/BENCHMARK.md](docs/BENCHMARK.md)).
 
-**Default mode (mcp-for-blender):**
+**mcp-for-blender mode:**
 1. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
    (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
 2. Install and enable the Blender add-on of
@@ -475,8 +476,9 @@ Restart Blender so it picks up your new `PATH`, or set **Advanced → Claude Cod
 <details>
 <summary><b>Claude answers but nothing changes in the scene</b></summary>
 
-Claude can't reach Blender. Either enable the `mcp-for-blender` add-on (port 9876), or switch
-**3 · Blender MCP** to **Free Plugin tools only**. The bar's banner and its **Fix it** button tell
+Claude can't reach Blender. In the default mode, check that **3 · Blender MCP** shows
+**Free Plugin MCP: on**. With an mcp-for-blender mode, enable the `mcp-for-blender` add-on (port 9876), or switch
+**3 · Blender MCP** back to **Free Plugin tools only**. The bar's banner and its **Fix it** button tell
 you which.
 </details>
 

@@ -33,11 +33,12 @@ def _api_changed(self, context):
 
 
 MCP_MODES = (
-    ("EXTERNAL", "mcp-for-blender", "The mcp-for-blender add-on's tools (the default, the most complete)"),
+    ("EXTERNAL", "mcp-for-blender",
+     "The mcp-for-blender add-on's tools (the most complete, needs uv and its Blender add-on)"),
     ("BOTH", "mcp-for-blender + Free Plugin tools",
      "Both: Claude uses the compact Free Plugin tools first, mcp-for-blender for the rest"),
     ("OWN", "Free Plugin tools only (lighter)",
-     "Only the built-in Free Plugin tools: fewer tokens, no uv or mcp-for-blender needed"),
+     "Only the built-in Free Plugin tools (the default): the fewest tokens, nothing to install"),
 )
 
 
@@ -130,7 +131,7 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         name="Claude's Blender tools",
         description="Which MCP tools the chat gives Claude to act on this Blender",
         items=[(key, label, text, 300 + index) for index, (key, label, text) in enumerate(MCP_MODES)],
-        default="EXTERNAL", update=_mcp_changed,
+        default="OWN", update=_mcp_changed,
     )
     own_mcp_port: bpy.props.IntProperty(
         name="Free Plugin MCP port", default=0, min=0, max=65535, update=_mcp_changed,
