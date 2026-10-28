@@ -1,6 +1,6 @@
 # Passation : reprendre le travail sur free-plugin-blender
 
-Dernière mise à jour : 2026-10-28. À lire en premier dans une nouvelle session.
+Dernière mise à jour : 2026-10-28 (v0.14.0 en PR). À lire en premier dans une nouvelle session.
 Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`.
 
 ## 1. Le projet en bref
@@ -53,7 +53,8 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR #9, DeepSeek PR #10) | publiée |
 | 0.11.0 | Refonte de la barre du viewport (PR #11) | publiée |
 | 0.12.0 | README anglais « Kiln » (PR #13), fix du clipping du chat (PR #14), bibliothèque *My generations* + sortie par défaut `~/Kiln` (`library.py`) | publiée |
-| 0.13.0 | Actions après une image : matériau, onglet 3D avec l'image, scène par Claude avec l'image jointe (`attach.py`, `--input-format stream-json` vérifié avec le vrai Claude Code 2.1.312) | à publier |
+| 0.13.0 | Actions après une image : matériau, onglet 3D avec l'image, scène par Claude avec l'image jointe (`attach.py`, `--input-format stream-json` vérifié avec le vrai Claude Code 2.1.312) | publiée |
+| 0.14.0 | *Render scene* comme source (image, 3D, vidéo : `scene.render_scene`) ; **+** de l'onglet Scene : capture du viewport sans la barre (`state.hidden`), vue caméra, rendu ou fichier, envoyés à Claude avec le message (`state.chat_images`) ; l'outil MCP `screenshot` masque aussi la barre | PR ouverte |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 

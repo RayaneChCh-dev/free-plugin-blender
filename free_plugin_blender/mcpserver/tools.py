@@ -280,8 +280,15 @@ def screenshot(source="viewport", max_size=768):
         if area is None:
             raise ToolError("No 3D view is open")
         region = next(r for r in area.regions if r.type == "WINDOW")
-        with bpy.context.temp_override(window=window, area=area, region=region):
-            bpy.ops.screen.screenshot_area(filepath=str(path))
+        from .. import overlay
+
+        overlay.state.hidden = True  # the prompt bar would hide part of the scene
+        try:
+            with bpy.context.temp_override(window=window, area=area, region=region):
+                bpy.ops.wm.redraw_timer(type="DRAW", iterations=1)
+                bpy.ops.screen.screenshot_area(filepath=str(path))
+        finally:
+            overlay.state.hidden = False
     data, size = _encode(path, max(64, min(int(max_size), 2048)))
     return f"{source} {size[0]}x{size[1]}", Image(data)
 

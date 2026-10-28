@@ -113,7 +113,7 @@ def _uses_image(scene, slot_name) -> bool:
     props = scene.free_plugin
     return {
         "image": props.image_reference != "NONE",
-        "video": props.video_source == "CAMERA",
+        "video": props.video_source != "TEXT",
         "mesh": props.mesh_source != "TEXT",
     }[slot_name]
 

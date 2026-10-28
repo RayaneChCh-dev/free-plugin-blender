@@ -273,7 +273,8 @@ Click it to open the card:
   *Video* (if enabled), *Animation*, *Assets* (Poly Haven). On the right: the account status
   (**● Claude Max**), **+** (new conversation) and **⌄** (collapse).
 - **Selected objects** appear as **@mentions** (× to remove one). Claude gets the selection along with your message.
-- At the bottom: **+** (attach the camera view or an image), the **model menu**, quick settings as chips,
+- At the bottom: **+** (attach the camera view, a render of the scene or an image; in *Scene* mode, show Claude
+  a viewport capture, the camera view, a render or an image file), the **model menu**, quick settings as chips,
   and in *Scene* mode the Claude model, the effort, the tokens of the last answer and the round **send** button.
 
 **Enter** sends, **Shift+Enter** adds a new line, **Esc** closes. While you type, Blender
@@ -308,7 +309,8 @@ check the **price shown next to the Generate button** before you click.
 </p>
 
 Attach the **camera view** with **+** to generate from what the camera sees (image → image,
-image → 3D, image → video).
+image → 3D, image → video). **Render scene** does a full render with the scene's engine first (like F12:
+seconds with EEVEE, longer with Cycles) and starts from that.
 
 ### After an image: use it
 

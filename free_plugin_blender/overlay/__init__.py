@@ -98,6 +98,8 @@ class _State:
         self.excluded: set[str] = set()
         self.library: list = []  # the generations last drawn in Assets › My generations, for clicks
         self.picked = ""  # the image last clicked in My generations: its actions show under the list
+        self.chat_images: list[tuple[str, str]] = []  # (label, path) sent to Claude with the next message
+        self.hidden = False  # True while a viewport capture is taken, so the bar is not in it
         self.notice = ("", 0.0)
         self.session = 0
         self.errors = 0
@@ -247,8 +249,14 @@ def _short_path(path):
     return str(path).replace(os.path.expanduser("~"), "~", 1)
 
 
+RENDER_LABEL = "Rendered scene"
+
+
 def _attachment(context, mode):
     props = context.scene.free_plugin
+    source = {"image": props.image_reference, "mesh": props.mesh_source, "video": props.video_source}.get(mode)
+    if source == "RENDER":
+        return RENDER_LABEL
     if mode == "image":
         if props.image_reference == "CAMERA":
             return "Camera view"
@@ -353,7 +361,7 @@ def _draw_callback():
 def _draw(context):
     region = context.region
     s = context.preferences.system.ui_scale
-    if region is None or region.width < 320 * s or region.height < 200 * s:
+    if region is None or region.width < 320 * s or region.height < 200 * s or state.hidden:
         return
     rects: list = []
     gfx.begin()
@@ -730,7 +738,8 @@ def _draw_card(context, region, s, rects):
     shown_lines = max(2, min(6, len(lines)))
     mentions = _mentions(context) if mode == "scene" else []
     attachment = _attachment(context, mode)
-    chips_h = 34 * s if (mentions or attachment) else 0
+    chat_images = state.chat_images if mode == "scene" else []
+    chips_h = 34 * s if (mentions or attachment or chat_images) else 0
     bottom_h = 30 * s
     box_h = 10 * s + chips_h + shown_lines * line_h + 8 * s + bottom_h + 8 * s
 
@@ -789,13 +798,17 @@ def _draw_card(context, region, s, rects):
     chip_size = 12 * s
     if attachment:
         warning = attachment == "Select a mesh first"
-        icon = gfx.icon_camera if attachment == "Camera view" else gfx.icon_warning if warning else None
+        icon = (gfx.icon_camera if attachment in ("Camera view", RENDER_LABEL)
+                else gfx.icon_warning if warning else None)
         cx += _chip(rects, "attach_clear", cx, chip_y, attachment, chip_size, s,
                     closable=mode not in ("material", "animation"), style="warn" if warning else "attach",
                     icon=icon) + 6 * s
     for name in mentions:
         cx += _chip(rects, f"mention:{name}", cx, chip_y, "@" + name, chip_size, s, closable=True,
                     style="mention") + 6 * s
+    for index, (label, _path) in enumerate(chat_images):
+        cx += _chip(rects, f"chat_image:{index}", cx, chip_y, label, chip_size, s, closable=True,
+                    style="attach", icon=gfx.icon_camera) + 6 * s
     text_top = top - chips_h
     first_line = max(0, len(lines) - shown_lines)
     caret_line = next((i for i, (a, b) in enumerate(lines) if a <= field.caret <= b), len(lines) - 1)
@@ -847,7 +860,7 @@ def _draw_card(context, region, s, rects):
         room -= label_w + 12 * s
 
     bx = text_x
-    if mode in ("image", "mesh", "video"):
+    if mode in ("scene", "image", "mesh", "video"):
         box = 28 * s
         gfx.outlined(bx, by + 1 * s, box, box, 7 * s, gfx.SURFACE_BORDER,
                      gfx.BG_HOVER if state.hover == "attach" else gfx.SURFACE)
@@ -910,11 +923,13 @@ def _submit(context):
             return
         mentions = _mentions(context)
         note = f"[Blender selection: {', '.join(mentions)}; active: {mentions[0]}]" if mentions else ""
-        error = chat.send(text, context.scene, note)
+        images = [path for _label, path in state.chat_images if os.path.isfile(path)]
+        error = chat.send(text, context.scene, note, images=images)
         if error:
             _notify(error)
             return
         state.field.set("")
+        state.chat_images.clear()
         state.show_thread, state.scroll = True, 0.0
         return
 
@@ -983,6 +998,7 @@ def _click(context, hit):
         state.mode, state.scroll, state.focused = hit[4:], 0.0, True
     elif hit == "new":
         chat.reset()
+        state.chat_images.clear()
         state.field.set("")
         state.scroll = 0.0
         state.open_groups.clear()
@@ -1005,6 +1021,10 @@ def _click(context, hit):
     elif hit == "attach_clear":
         if state.mode != "material":
             _set_source(props, state.mode, "NONE")
+    elif hit.startswith("chat_image:"):
+        index = int(hit[11:])
+        if index < len(state.chat_images):
+            del state.chat_images[index]
     elif hit.startswith("mention:"):
         state.excluded.add(hit[8:])
     elif hit == "source":
@@ -1202,6 +1222,10 @@ class FREEPLUGIN_OT_overlay_pick_file(bpy.types.Operator):
 
     def execute(self, context):
         props = context.scene.free_plugin
+        if state.mode == "scene":
+            state.chat_images.append((os.path.basename(self.filepath), bpy.path.abspath(self.filepath)))
+            _redraw()
+            return {"FINISHED"}
         if state.mode == "image":
             props.image_reference_path = self.filepath
         else:
@@ -1209,6 +1233,65 @@ class FREEPLUGIN_OT_overlay_pick_file(bpy.types.Operator):
         _set_source(props, state.mode, "FILE")
         _redraw()
         return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_overlay_chat_attach(bpy.types.Operator):
+    """Scene tab "+": capture the viewport, the camera or a render, to send with the next message."""
+
+    bl_idname = "freeplugin.overlay_chat_attach"
+    bl_label = "Show Claude"
+    bl_description = "Attach a picture of the scene to your next message"
+    bl_options = {"INTERNAL"}
+
+    source: bpy.props.EnumProperty(items=[("VIEWPORT", "Viewport capture", "What the 3D view shows, without this bar"),
+                                          ("CAMERA", "Camera view", "A quick viewport render of the active camera"),
+                                          ("RENDER", "Render scene", "A full render with the scene's engine (F12)")])
+
+    def execute(self, context):
+        from .. import scene as scene_utils
+
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        path = prefs.output_dir("captures") / f"{stamp}-{self.source.lower()}.png"
+        label = {"VIEWPORT": "Viewport", "CAMERA": "Camera view", "RENDER": RENDER_LABEL}[self.source]
+        if self.source == "VIEWPORT":
+            _capture_viewport(context.window, path, label)
+            return {"FINISHED"}
+        try:
+            if self.source == "CAMERA":
+                scene_utils.capture_camera(path)
+            else:
+                _notify("Rendering…")
+                scene_utils.render_scene(path)
+        except RuntimeError as error:
+            self.report({"ERROR"}, str(error))
+            _notify(str(error))
+            return {"CANCELLED"}
+        state.chat_images.append((label, str(path)))
+        _redraw()
+        return {"FINISHED"}
+
+
+def _capture_viewport(window, path, label):
+    """Hide the bar, let the view redraw, take the screenshot, show the bar again."""
+    state.hidden = True
+    _redraw()
+
+    def shoot():
+        try:
+            area = next((a for a in window.screen.areas if a.type == "VIEW_3D"), None)
+            if area is None:
+                _notify("No 3D view to capture")
+                return None
+            region = next(r for r in area.regions if r.type == "WINDOW")
+            with bpy.context.temp_override(window=window, area=area, region=region):
+                bpy.ops.screen.screenshot_area(filepath=str(path))
+            state.chat_images.append((label, str(path)))
+        finally:
+            state.hidden = False
+            _redraw()
+        return None
+
+    bpy.app.timers.register(shoot, first_interval=0.15)
 
 
 class FREEPLUGIN_OT_overlay_browse(bpy.types.Operator):
@@ -1324,10 +1407,20 @@ class FREEPLUGIN_MT_overlay_attach(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
+        if state.mode == "scene":
+            layout.label(text="Show Claude…")
+            for source, label, icon in (("VIEWPORT", "Viewport capture", "RESTRICT_VIEW_OFF"),
+                                        ("CAMERA", "Camera view", "CAMERA_DATA"),
+                                        ("RENDER", "Render scene", "RENDER_STILL")):
+                layout.operator("freeplugin.overlay_chat_attach", text=label, icon=icon).source = source
+            layout.operator("freeplugin.overlay_browse", text="Image file…", icon="FILE_IMAGE")
+            return
         op = layout.operator("freeplugin.overlay_set", text="Text only", icon="FONT_DATA")
         op.target, op.value = "source", "NONE"
         op = layout.operator("freeplugin.overlay_set", text="Camera view", icon="CAMERA_DATA")
         op.target, op.value = "source", "CAMERA"
+        op = layout.operator("freeplugin.overlay_set", text="Render scene", icon="RENDER_STILL")
+        op.target, op.value = "source", "RENDER"
         if state.mode != "video":
             layout.operator("freeplugin.overlay_browse", text="Image file…", icon="FILE_IMAGE")
 
@@ -1407,6 +1500,7 @@ classes = (
     FREEPLUGIN_OT_overlay_set,
     FREEPLUGIN_OT_overlay_pick_file,
     FREEPLUGIN_OT_overlay_browse,
+    FREEPLUGIN_OT_overlay_chat_attach,
     FREEPLUGIN_MT_overlay_model,
     FREEPLUGIN_MT_overlay_effort,
     FREEPLUGIN_MT_overlay_duration,
