@@ -187,6 +187,7 @@ def _mentions(context):
     if active is not None and active in objects:
         objects.remove(active)
         objects.insert(0, active)
+    state.excluded &= {o.name for o in objects}  # × lasts until deselected: selecting it again brings it back
     return [o.name for o in objects if o.name not in state.excluded][:4]
 
 
