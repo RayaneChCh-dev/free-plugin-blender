@@ -50,7 +50,8 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (PR #5) | publiée |
 | 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif (PR #6) | publiée |
 | 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés (PR #7) | publiée |
-| 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR #9, DeepSeek PR `feat/deepseek-chat`, puis OpenRouter/Ollama) | en cours : **version publiée à la fin de la phase** (décision de l'utilisateur, pas de tag par PR) |
+| 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR #9, DeepSeek PR #10) | publiée |
+| 0.11.0 | Refonte de la barre du viewport (PR #11) | à publier |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
@@ -116,7 +117,7 @@ serveur est une option avancée pour économiser des tokens. Préférence `mcp_m
 ### Refonte de la barre du viewport (branche `feat/bar-redesign`)
 
 Phase 4 arrêtée par l'utilisateur après DeepSeek (OpenRouter/Ollama « plus tard »).
-v0.10.0 pas encore publiée : à faire quand l'utilisateur le décide (il pousse le tag).
+v0.10.0 publiée (phase 4, sans la nouvelle barre : tag poussé avant la fusion de PR #11). La refonte sort en v0.11.0.
 
 - Puree évalué et écarté (binaires compilés, PyAV, `moderngl` OpenGL, Blender 5.1+,
   API instable) : on garde notre rendu `gpu`/`blf`.

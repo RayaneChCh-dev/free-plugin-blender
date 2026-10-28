@@ -46,7 +46,7 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.10.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.11.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
 ## Configuration (Preferences → Add-ons → Free Plugin Blender)
