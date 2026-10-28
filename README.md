@@ -141,6 +141,23 @@ free_plugin_blender/
   providers/          fal.py, fal_schema.py, meshy.py, polyhaven.py (sans bpy)
 ```
 
+## Développement
+
+- Chaque changement passe par une pull request vers `main`, qui est protégée.
+  La marche à suivre est dans le skill [`feature-pr`](.claude/skills/feature-pr/SKILL.md).
+- Tests :
+
+  ```bash
+  uvx ruff@0.14.0 check .
+  python3 -m pytest -q                                           # sans Blender
+  python3 scripts/run_blender_tests.py --blender /chemin/blender # Blender sans interface
+  ```
+
+- La CI (GitHub Actions) lance `lint`, `unit-tests` et `blender-tests` sur chaque PR.
+- Release : augmenter `version` dans `blender_manifest.toml`, fusionner dans `main`,
+  puis pousser le tag `vX.Y.Z`. Le workflow *Release* publie le zip.
+- Feuille de route : [docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## Licence
 
 GPL-3.0-or-later.

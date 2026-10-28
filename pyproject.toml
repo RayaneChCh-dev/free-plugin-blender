@@ -1,0 +1,14 @@
+# Tooling only: the add-on itself is packaged by scripts/build.py, not pip.
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["dist", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["free_plugin_blender"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]

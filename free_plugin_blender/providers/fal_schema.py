@@ -74,7 +74,8 @@ def _field(name: str, raw: dict) -> dict | None:
         if key in spec:
             field[key] = spec[key]
     default = raw.get("default", spec.get("default"))
-    if default is not None and (kind != "ENUM" or default in field["options"]) and not isinstance(default, (dict, list)):
+    representable = kind != "ENUM" or default in field["options"]
+    if default is not None and representable and not isinstance(default, (dict, list)):
         field["default"] = default
     return field
 

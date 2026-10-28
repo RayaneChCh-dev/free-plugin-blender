@@ -1,0 +1,33 @@
+name: Set up Blender
+description: Download (cached) a Blender release and expose its path as BLENDER.
+inputs:
+  version:
+    description: Blender version, e.g. 5.2.3
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: System libraries for headless Blender
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libegl1 libxkbcommon0 libsm6 > /dev/null
+    - name: Cache Blender
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/blender
+        key: blender-${{ inputs.version }}-linux-x64
+    - name: Download Blender
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        series="${{ inputs.version }}"; series="${series%.*}"
+        mkdir -p ~/blender
+        curl -fsSL "https://download.blender.org/release/Blender${series}/blender-${{ inputs.version }}-linux-x64.tar.xz" \
+          | tar -xJ -C ~/blender --strip-components=1
+    - name: Expose BLENDER
+      shell: bash
+      run: |
+        echo "BLENDER=$HOME/blender/blender" >> "$GITHUB_ENV"
+        "$HOME/blender/blender" --version | head -1
