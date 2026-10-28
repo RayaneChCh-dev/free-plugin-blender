@@ -48,7 +48,8 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.5.0 | Modèles Claude précis + effort Medium par défaut (PR #3) | publiée |
 | 0.6.0 | Réglages simples par mode (`controls.py`), Meshy 7 via fal.ai (PR #4) | publiée |
 | 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (PR #5) | publiée |
-| 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif | PR `feat/fal-retexture` |
+| 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif (PR #6) | publiée |
+| 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés | PR `feat/local-mcp` |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
@@ -73,16 +74,34 @@ Fusionnée (PR #5), release v0.7.0 publiée. Ensuite : v0.8.0, retexture via fal
 - **Non testé** : appels réels à fal.ai (pas de clé). Le format exact de
   `animation_glb` et du FBX Hunyuan vient de la doc fal.ai et de l'exemple public.
 
+### Phase 3 : serveur MCP intégré (v0.9.0, branche `feat/local-mcp`)
+
+Décision de l'utilisateur : `mcp-for-blender` reste **la base (mode par défaut)** ; notre
+serveur est une option avancée pour économiser des tokens. Préférence `mcp_mode` :
+`EXTERNAL` (défaut) / `BOTH` / `OWN`.
+
+- `mcpserver/protocol.py` et `httpserver.py` (sans bpy) : JSON-RPC MCP (initialize,
+  tools/list, tools/call, ping), transport « Streamable HTTP » en JSON seulement
+  (pas de SSE, GET → 405), `127.0.0.1`, jeton `Bearer` (`prefs.own_mcp_token`),
+  Origin non local refusé.
+- `mcpserver/tools.py` : 12 outils. Ceux qui touchent bpy passent par `on_main`
+  (file d'attente vidée par un timer, `pump`). `generate` et `assets` attendent la
+  tâche dans le thread HTTP, sans bloquer Blender.
+- `chat.mcp_servers()` construit `--mcp-config` selon le mode ; `--allowedTools`
+  séparés par des virgules ; prompt système plus court en mode `OWN`.
+- **Vérifié avec le vrai Claude Code 2.1.312** (Haiku, Blender jetable, mode OWN) :
+  serveur `connected`, `scene_summary` puis `add_object` appelés, objet créé.
+- Pas encore mesuré : l'écart de tokens réel entre les modes (le plugin l'affiche
+  sous le chat : *Last answer*).
+
 ### Ensuite (roadmap)
 
-- ~~Retexture via fal.ai~~ : fait en v0.8.0 (choix fal.ai / Meshy dans la section Retexture).
-- **Phase 3** : notre propre serveur MCP local avec des outils de haut niveau
-  (résumé de scène, primitives, matériaux, rendu, capture, génération, Poly Haven,
-  Python en dernier recours). Il remplace la dépendance à `mcp-for-blender` et le
-  port partagé.
+- Sketchfab / Poly Pizza et un `look` annoté dans nos outils, si le mode OWN montre
+  qu'ils manquent.
 - **Phase 4** : autres fournisseurs avec clé API (ordre validé : OpenAI → Gemini →
   DeepSeek → OpenRouter/Ollama). La boucle d'agent tourne dans le plugin avec les
-  outils de la phase 3. Listes de modèles lues en direct, effort Medium par défaut.
+  outils de `mcpserver/tools.py` (même registre). Listes de modèles lues en direct,
+  effort Medium par défaut.
 
 ## 5. Architecture (fichiers clés)
 
@@ -96,7 +115,8 @@ free_plugin_blender/
   controls.py        réglages simples → champs du modèle (sans bpy) ; ui_controls.py pour l'UI
   operators.py       générations (_ModelChoice.run : schéma → options → controls → payload)
   providers/         fal.py, fal_schema.py, meshy.py, polyhaven.py (sans bpy)
-  chat.py            claude -p (--tools "", --strict-mcp-config, --allowedTools mcp__blender,
+  mcpserver/         serveur MCP intégré (protocol.py, httpserver.py sans bpy ; tools.py)
+  chat.py            claude -p (--tools "", --strict-mcp-config, --allowedTools selon le mode,
                      --permission-mode dontAsk, --model, --effort, --resume), identifiant d'instance
   account.py         claude auth status/login --claudeai/logout
   claude_models.py   modèles Claude exacts et efforts (sans bpy)
@@ -114,7 +134,7 @@ toute modification de `data/models.json`.
 
 ```bash
 uvx ruff@0.14.0 check .
-python3 -m pytest -q                                                   # 84 passent
+python3 -m pytest -q                                                   # 90 passent
 python3 scripts/run_blender_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender
 python3 scripts/run_gui_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender   # fenêtre, pas en CI
 ```

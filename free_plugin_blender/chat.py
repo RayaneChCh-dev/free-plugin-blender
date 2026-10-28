@@ -1,11 +1,11 @@
 """Chat with Claude Code from Blender, on the user's own Claude subscription.
 
 Each message runs `claude -p` (Claude Code in headless mode) on a worker thread.
-Claude acts on this Blender through a Blender MCP server (default:
-`uvx mcp-for-blender`, which talks to the blender_mcp add-on on port 9876) and
-can call the `bpy.ops.freeplugin.*` operators from there. Built-in tools are
-disabled (`--tools ""`) and only that MCP server is loaded and allowed, so the
-chat can drive Blender and nothing else directly.
+Claude acts on this Blender through MCP, as chosen in the preferences:
+`uvx mcp-for-blender` (talks to the blender_mcp add-on on port 9876, the default),
+the built-in Free Plugin server (`mcpserver/`, compact tools, this Blender only),
+or both. Built-in tools are disabled (`--tools ""`) and only those MCP servers are
+loaded and allowed, so the chat can drive Blender and nothing else directly.
 
 The conversation (messages + Claude session id) is saved in the .blend file,
 on the scene, as `scene["free_plugin_chat"]`.
@@ -25,9 +25,10 @@ from pathlib import Path
 
 import bpy
 
-from . import catalog, claude_models, prefs
+from . import catalog, claude_models, mcpserver, prefs
 
-MCP_SERVER = "blender"
+MCP_SERVER = "blender"  # mcp-for-blender
+OWN_SERVER = mcpserver.SERVER_NAME
 _MAX_MESSAGES = 200
 # Identifies this Blender: the MCP server reaches whichever Blender owns the port,
 # so Claude checks this value before touching anything.
@@ -44,6 +45,8 @@ class _State:
         self.dirty = False
         self.mcp_listening = False
         self.scene_name = ""
+        self.usage = ""  # tokens of the last answer
+        self.session_tokens = 0
 
 
 state = _State()
@@ -80,13 +83,19 @@ def claude_executable() -> str | None:
     return shutil.which("claude", path=_search_path())
 
 
-def _mcp_config() -> str:
+def mcp_servers() -> dict:
+    """{name: config} of the MCP servers the chat loads, for the mode in the preferences."""
     settings = prefs.get()
-    command, *args = shlex.split(settings.mcp_command) or ["uvx", "mcp-for-blender"]
-    port = str(settings.mcp_port)
-    # mcp-for-blender reads BLENDER_PORT, Blender Lab's MCP reads BLENDER_MCP_PORT.
-    env = {"BLENDER_PORT": port, "BLENDER_MCP_PORT": port}
-    return json.dumps({"mcpServers": {MCP_SERVER: {"command": command, "args": args, "env": env}}})
+    servers = {}
+    if settings.mcp_mode in ("EXTERNAL", "BOTH"):
+        command, *args = shlex.split(settings.mcp_command) or ["uvx", "mcp-for-blender"]
+        port = str(settings.mcp_port)
+        # mcp-for-blender reads BLENDER_PORT, Blender Lab's MCP reads BLENDER_MCP_PORT.
+        env = {"BLENDER_PORT": port, "BLENDER_MCP_PORT": port}
+        servers[MCP_SERVER] = {"command": command, "args": args, "env": env}
+    if settings.mcp_mode in ("BOTH", "OWN") and mcpserver.start() is not None:
+        servers[OWN_SERVER] = mcpserver.client_config()
+    return servers
 
 
 def _workspace() -> Path:
@@ -95,15 +104,27 @@ def _workspace() -> Path:
     return path
 
 
-def system_prompt() -> str:
+def _catalog_keys() -> str:
     def keys(slot):
         return ", ".join(f"{e['key']} ({e.get('cost') or 'see fal.ai'})" for e in catalog.models(slot))
 
-    return f"""You are an assistant inside the user's open Blender session. You act on the scene only
-through the `{MCP_SERVER}` MCP tools (run Python with bpy, inspect the scene, take screenshots).
+    return f"""Catalog keys with indicative prices:
+- image: {keys("image")}
+- video: {keys("video")}
+- mesh: {keys("mesh")}"""
 
-Several Blender windows can be open and the MCP tools reach whichever one owns the MCP port. At the
-start of every turn, before changing anything, run
+
+_COSTS = """Generations are billed to the user's fal.ai account. Prefer free options first (modelling with bpy,
+Poly Haven), then the cheapest suitable model (trellis for 3D, seedream45 for images). Say what a
+generation will cost before or when you start it. Never start a video, or anything above $0.50, unless
+the user explicitly asked for it. Blender units are metres, Z is up."""
+
+_STYLE = "Answer in the user's language, briefly: say what you did, not how."
+
+
+def _external_prompt() -> str:
+    return f"""Several Blender windows can be open and the `{MCP_SERVER}` MCP tools reach whichever one owns the MCP
+port. At the start of every turn, before changing anything with them, run
 `bpy.context.window_manager.get("free_plugin_instance")` and check it equals "{INSTANCE}". If it
 does not, change nothing and tell the user the MCP is connected to another Blender window (close the
 other one or give each its own MCP port).
@@ -123,17 +144,41 @@ These operators return at once and finish in the background. Poll
 json.loads(bpy.context.window_manager.get("free_plugin_tasks", "[]")) until the task's "state" is
 "done" or "error"; "result" holds the new object names or file path. Wait a few seconds between polls.
 
-Catalog keys with indicative prices:
-- image: {keys("image")}
-- video: {keys("video")}
-- mesh: {keys("mesh")}
+{_catalog_keys()}"""
 
-Generations are billed to the user's fal.ai account. Prefer free options first (modelling with bpy,
-Poly Haven), then the cheapest suitable model (trellis for 3D, seedream45 for images). Say what a
-generation will cost before or when you start it. Never start a video, or anything above $0.50, unless
-the user explicitly asked for it. Blender units are metres, Z is up.
 
-Answer in the user's language, briefly: say what you did, not how."""
+def system_prompt(servers=None) -> str:
+    servers = mcp_servers() if servers is None else servers
+    head = "You are an assistant inside the user's open Blender session."
+    if MCP_SERVER in servers and OWN_SERVER in servers:
+        return f"""{head} You act on the scene through two MCP servers:
+`{OWN_SERVER}` (this Blender only, compact tools: scene_summary, add_object, set_material, generate,
+assets…) and `{MCP_SERVER}` (Python with bpy, `look`, asset libraries such as Sketchfab). Prefer the
+`{OWN_SERVER}` tools: they cost fewer tokens. Use `{MCP_SERVER}` for what they cannot do.
+
+{_external_prompt()}
+
+{_COSTS}
+
+{_STYLE}"""
+    if OWN_SERVER in servers:
+        return f"""{head} You act on the scene only through the `{OWN_SERVER}` MCP tools.
+Read the scene with scene_summary before changing it. Prefer the specific tools; run_python is the last
+resort. plugin_status lists the generation models and their prices. If a request needs something these
+tools cannot do (e.g. Sketchfab assets), say that the preference "Claude's Blender tools" →
+"mcp-for-blender + Free Plugin tools" adds more.
+
+{_COSTS}
+
+{_STYLE}"""
+    return f"""{head} You act on the scene only
+through the `{MCP_SERVER}` MCP tools (run Python with bpy, inspect the scene, take screenshots).
+
+{_external_prompt()}
+
+{_COSTS}
+
+{_STYLE}"""
 
 
 # --------------------------------------------------------------------------- running
@@ -156,14 +201,17 @@ def send(text: str, scene, note: str = "") -> str | None:
     if account.account.logged_in is False:
         return "Connect your Claude subscription first (Scene tab › Claude account)"
 
+    servers = mcp_servers()
+    if not servers:
+        return f"The Free Plugin MCP server could not start: {mcpserver.state.error}"
     state.scene_name = scene.name
     _add("user", text)
     state.busy, state.status = True, "Claude is thinking…"
     command = [
         executable, "-p", "--output-format", "stream-json", "--verbose",
-        "--tools", "", "--strict-mcp-config", "--mcp-config", _mcp_config(),
-        "--allowedTools", f"mcp__{MCP_SERVER}", "--permission-mode", "dontAsk",
-        "--append-system-prompt", system_prompt(),
+        "--tools", "", "--strict-mcp-config", "--mcp-config", json.dumps({"mcpServers": servers}),
+        "--allowedTools", ",".join(f"mcp__{name}" for name in servers), "--permission-mode", "dontAsk",
+        "--append-system-prompt", system_prompt(servers),
     ]
     if state.session_id:
         command += ["--resume", state.session_id]
@@ -224,6 +272,8 @@ def _handle(event) -> bool:
         servers = {s.get("name"): s.get("status") for s in event.get("mcp_servers", [])}
         if servers.get(MCP_SERVER) not in (None, "connected"):
             _add("error", f"Blender MCP server is {servers.get(MCP_SERVER)}: check the MCP command in the preferences")
+        if servers.get(OWN_SERVER) not in (None, "connected"):
+            _add("error", f"Free Plugin MCP server is {servers.get(OWN_SERVER)}: see Preferences › Blender MCP")
     elif kind == "assistant":
         for block in event.get("message", {}).get("content", []):
             if block.get("type") == "text":
@@ -241,6 +291,7 @@ def _handle(event) -> bool:
             state.status = "Claude is thinking…"
     elif kind == "result":
         state.session_id = event.get("session_id", state.session_id)
+        _record_usage(event.get("usage") or {})
         if event.get("is_error") or event.get("subtype") != "success":
             _add("error", str(event.get("result") or event.get("subtype"))[:600])
         denials = event.get("permission_denials") or []
@@ -249,6 +300,20 @@ def _handle(event) -> bool:
             _add("info", "Not allowed in the chat: " + ", ".join(names))
         return True
     return False
+
+
+def _tokens(count) -> str:
+    return f"{count / 1000:.1f}k" if count >= 1000 else str(count)
+
+
+def _record_usage(usage):
+    cached = usage.get("cache_read_input_tokens", 0) or 0
+    sent = (usage.get("input_tokens", 0) or 0) + (usage.get("cache_creation_input_tokens", 0) or 0) + cached
+    out = usage.get("output_tokens", 0) or 0
+    if not sent and not out:
+        return
+    state.session_tokens += sent + out
+    state.usage = f"Last answer: {_tokens(sent)} tokens in ({_tokens(cached)} cached) · {_tokens(out)} out"
 
 
 def stop():
@@ -260,6 +325,7 @@ def reset():
     stop()
     state.messages.clear()
     state.session_id = ""
+    state.usage, state.session_tokens = "", 0
     state.dirty = True
 
 

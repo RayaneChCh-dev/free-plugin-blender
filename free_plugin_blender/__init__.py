@@ -7,7 +7,7 @@ that such a client can call.
 
 import bpy
 
-from . import animation, catalog, chat, operators, overlay, panels, params, prefs, props, tasks, ui_controls
+from . import animation, catalog, chat, mcpserver, operators, overlay, panels, params, prefs, props, tasks, ui_controls
 
 _classes = (prefs.FreePluginPreferences, *ui_controls.classes[1:], *operators.classes, *animation.classes,
             *panels.classes)
@@ -22,11 +22,13 @@ def register():
     params.register_handlers()
     chat.register()
     animation.register()
+    mcpserver.register()
     overlay.register()
 
 
 def unregister():
     overlay.unregister()
+    mcpserver.unregister()
     animation.unregister()
     chat.unregister()
     params.unregister_handlers()

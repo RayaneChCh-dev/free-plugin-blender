@@ -78,6 +78,8 @@ def test():
                   "trellis ($0.02)" in prompt and chat.INSTANCE in prompt)
     harness.check("instance id published", bpy.context.window_manager.get("free_plugin_instance") == chat.INSTANCE)
     harness.check("saved in the scene", len(json.loads(scene["free_plugin_chat"])["messages"]) == 6)
+    harness.check("token usage shown", chat.state.usage == "Last answer: 9.3k tokens in (9.0k cached) · 450 out",
+                  chat.state.usage)
 
     prefs.chat_model, prefs.chat_effort = "DEFAULT", "xhigh"
     chat.send("encore", scene)

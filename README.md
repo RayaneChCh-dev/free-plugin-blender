@@ -46,7 +46,7 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.8.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.9.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
 ## Configuration (Preferences → Add-ons → Free Plugin Blender)
@@ -193,9 +193,28 @@ plugin (Poly Haven, génération d'images, de matériaux, 3D…).
 
 Prérequis :
 1. [Claude Code](https://claude.com/claude-code) installé, et ton abonnement connecté (bouton *Connect my Claude subscription*).
-2. L'add-on Blender de [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/)
+2. En mode par défaut : l'add-on Blender de [`mcp-for-blender`](https://pypi.org/project/mcp-for-blender/)
    activé dans Blender (il ouvre le port 9876), et [`uv`](https://docs.astral.sh/uv/)
-   installé pour lancer `uvx mcp-for-blender`.
+   installé pour lancer `uvx mcp-for-blender`. Pas nécessaire en mode *Free Plugin tools only*.
+
+### Les outils de Claude (Preferences → *3 · Blender MCP*)
+
+| Mode | Claude reçoit | Pour qui |
+|---|---|---|
+| **mcp-for-blender** (défaut) | les outils de `mcp-for-blender` | le plus complet, comme avant |
+| **mcp-for-blender + Free Plugin tools** | les deux ; il prend les nôtres d'abord | moins de tokens, rien en moins |
+| **Free Plugin tools only (lighter)** | seulement les outils intégrés | le moins de tokens, sans `uv` ni `mcp-for-blender` |
+
+Le serveur MCP intégré tourne dans le plugin, sur `127.0.0.1`, avec un port par
+Blender (automatique) et un jeton secret : il n'atteint jamais un autre Blender.
+Ses outils sont compacts : `scene_summary`, `object_info`, `add_object`,
+`edit_object`, `set_material`, `screenshot`, `generate` (attend le résultat),
+`assets` (Poly Haven), `find_presets`, `task_status`, `plugin_status`, et
+`run_python` en dernier recours. Ce qui leur manque (Sketchfab, Poly Pizza…)
+reste disponible avec le mode à deux serveurs.
+
+Sous le chat, *Last answer : … tokens* montre ce que la dernière réponse a coûté :
+de quoi comparer les modes sur une même demande.
 
 Dans la sidebar, *Transcript* copie toute la
 conversation dans le Text Editor, *New* repart de zéro. La conversation est
@@ -219,8 +238,12 @@ quoi que ce soit. Pour en piloter plusieurs, donne à chacun son propre port
 
 ## Piloter depuis Claude Code (terminal)
 
-Le même serveur MCP peut être utilisé depuis Claude Code dans le terminal.
-Claude appelle alors directement les opérateurs :
+Le serveur intégré marche aussi depuis Claude Code dans un terminal : dans les
+préférences, choisis un port fixe, coche *Keep on for the terminal*, puis
+*Copy the terminal command* copie la commande `claude mcp add --transport http …`
+avec le jeton.
+
+Avec `mcp-for-blender`, Claude appelle directement les opérateurs :
 
 ```python
 bpy.ops.freeplugin.generate_image(prompt="a moroccan riad courtyard at dusk")
@@ -247,7 +270,8 @@ free_plugin_blender/
   __init__.py         enregistrement
   prefs.py            clés, dossier de sortie, accès au catalogue
   account.py          connexion de l'abonnement Claude (claude auth)
-  chat.py             chat : claude -p + serveur MCP Blender
+  chat.py             chat : claude -p + serveurs MCP selon le mode
+  mcpserver/          serveur MCP intégré : protocol.py, httpserver.py (sans bpy), tools.py
   overlay/            barre de prompt du viewport (gpu/blf, champ texte, modal)
   catalog.py          catalogue de modèles (data/models.json + ton models.json)
   params.py           menus de modèles et options générées depuis les schémas

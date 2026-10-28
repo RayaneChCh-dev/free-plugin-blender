@@ -55,4 +55,6 @@ emit({"type": "assistant", "message": {"content": [
 emit({"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True, "content": "boom"}]}})
 emit({"type": "assistant", "message": {"content": [{"type": "text", "text": "C'est fait."}]}})
 emit({"type": "result", "subtype": "success", "session_id": session, "result": "ok",
-      "permission_denials": [{"tool_name": "Bash"}]})
+      "permission_denials": [{"tool_name": "Bash"}],
+      "usage": {"input_tokens": 12, "cache_creation_input_tokens": 300, "cache_read_input_tokens": 9000,
+                "output_tokens": 450}})
