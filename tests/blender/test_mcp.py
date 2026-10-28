@@ -44,7 +44,9 @@ def test():
     os.environ["FAL_KEY"] = "test-key"
     prefs = bpy.context.preferences.addons[harness.MODULE].preferences
 
-    harness.check("off by default (mode mcp-for-blender)", prefs.mcp_mode == "EXTERNAL" and not mcp.wanted())
+    harness.check("mode OWN by default", prefs.mcp_mode == "OWN" and mcp.wanted())
+    prefs.mcp_mode = "EXTERNAL"
+    harness.check("off in mode mcp-for-blender", not mcp.wanted() and mcp.state.server is None)
     prefs.mcp_mode = "OWN"
     server = mcp.state.server
     harness.check("starts in mode OWN, on its own port", server is not None and server.port > 0, mcp.state.error)

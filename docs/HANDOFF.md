@@ -56,6 +56,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.13.0 | Actions après une image : matériau, onglet 3D avec l'image, scène par Claude avec l'image jointe (`attach.py`, `--input-format stream-json` vérifié avec le vrai Claude Code 2.1.312) | publiée |
 | 0.14.0 | *Render scene* comme source (image, 3D, vidéo : `scene.render_scene`) ; **+** de l'onglet Scene : capture du viewport sans la barre (`state.hidden`), vue caméra, rendu ou fichier, envoyés à Claude avec le message (`state.chat_images`) ; l'outil MCP `screenshot` masque aussi la barre | publiée |
 | 0.14.1 | Fix : une @mention retirée par × revient quand l'objet est désélectionné puis resélectionné (`_mentions`) | publiée |
+| 0.15.0 | Mode MCP par défaut : *Free Plugin tools only* (`OWN`), décidé par l'utilisateur après `docs/BENCHMARK.md` (≈ 2× moins de tokens qu'`EXTERNAL` avec Opus 5.5). Les préférences déjà enregistrées gardent leur mode | PR ouverte |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
@@ -82,7 +83,7 @@ Fusionnée (PR #5), release v0.7.0 publiée. Ensuite : v0.8.0, retexture via fal
 
 ### Phase 3 : serveur MCP intégré (v0.9.0, branche `feat/local-mcp`)
 
-Décision de l'utilisateur : `mcp-for-blender` reste **la base (mode par défaut)** ; notre
+Décision initiale de l'utilisateur : `mcp-for-blender` comme base (mode par défaut, jusqu'à v0.14.1 ; `OWN` par défaut depuis v0.15.0) ; notre
 serveur est une option avancée pour économiser des tokens. Préférence `mcp_mode` :
 `EXTERNAL` (défaut) / `BOTH` / `OWN`.
 

@@ -5,7 +5,7 @@ Measured on 2026-10-28 with the real Claude Code 2.1.312 on a Claude subscriptio
 mcp-for-blender on port 9877, one chat turn per run, default effort. **One run per cell**:
 the numbers move from run to run, read them as orders of magnitude.
 
-Modes: `EXTERNAL` = mcp-for-blender (the default), `BOTH` = both tool sets,
+Modes: `EXTERNAL` = mcp-for-blender (the default until v0.15.0), `BOTH` = both tool sets,
 `OWN` = the built-in Free Plugin tools only.
 
 Tasks (`scripts/bench/driver.py`):

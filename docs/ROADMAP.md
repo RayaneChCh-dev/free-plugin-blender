@@ -37,7 +37,8 @@ Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the
 - Built-in MCP server (`mcpserver/`, HTTP on 127.0.0.1, a port per Blender, token): compact
   typed tools (scene summary, object info, primitives, edits, materials, screenshot, generation
   that waits for its result, Poly Haven, animation presets, tasks, Python as a last resort).
-- Opt-in, `mcp-for-blender` stays the default: three modes (mcp-for-blender / both / built-in
+- Opt-in at first (`mcp-for-blender` was the default until v0.15.0, then the built-in tools after
+  the measurements in `docs/BENCHMARK.md`): three modes (mcp-for-blender / both / built-in
   only). Token usage shown under the chat to compare them.
 - Later: Sketchfab / Poly Pizza assets, a viewport `look` with annotations, if the modes show
   they are missed.

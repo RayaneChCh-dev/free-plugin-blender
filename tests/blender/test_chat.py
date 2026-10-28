@@ -41,6 +41,7 @@ def test():
     harness.check("defaults: Opus 5.5, medium effort", prefs.chat_model == "claude-opus-5-5"
                   and prefs.chat_effort == "medium", (prefs.chat_model, prefs.chat_effort))
     prefs.claude_path, prefs.chat_model, prefs.mcp_port = str(FAKE / "claude"), "claude-haiku-5-5", 9877
+    prefs.mcp_mode = "EXTERNAL"  # the checks below are about the mcp-for-blender command line
     scene = bpy.context.scene
 
     # Account: signed out → sign-in with a code → signed in.
