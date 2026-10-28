@@ -43,7 +43,7 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.5.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.6.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
 ## Configuration (Preferences → Add-ons → Free Plugin Blender)
@@ -81,7 +81,21 @@ tu modifies sont envoyées ; les autres gardent leur valeur par défaut chez fal
 |---|---|
 | Image | Seedream 4.5, Nano Banana, Nano Banana Pro, FLUX.2, Qwen Image, FLUX.1 schnell |
 | Vidéo | Kling 3.0 Pro/Standard, Kling 2.5 Turbo, Veo 3.1 / Fast, Seedance 1 Pro, Hailuo 02, Wan 2.2 |
-| 3D | TRELLIS, TRELLIS 2, Tripo H3.1, Hunyuan3D 3.1 Pro, Meshy (ta clé) |
+| 3D | TRELLIS, TRELLIS 2, Tripo H3.1, Hunyuan3D 3.1 Pro, Meshy 7 (fal.ai), Meshy (ta clé) |
+
+**Réglages simples** : sous le menu de modèle (sidebar) et en puces dans la barre,
+des réglages communs à tous les modèles, traduits vers les vrais champs de chacun :
+
+| Mode | Réglages |
+|---|---|
+| Image | Ratio, Résolution (1K/2K/4K), Qualité (Low/Medium/High), Format (PNG/JPEG/WebP) |
+| 3D | Mode (Preview = forme seule / Full = texturé), Type (Standard / Low-poly / Smart topology), Topologie (triangles / quads), Détail (nombre de polygones), PBR, Texture |
+| Vidéo | Durée et résolution (celles que le modèle propose), Ratio, Audio |
+
+*Auto* garde la valeur par défaut du modèle. Un réglage que le modèle choisi ne
+sait pas faire est grisé dans la sidebar et absent de la barre ; une valeur
+qu'un nouveau modèle n'accepte pas (une durée de 15 s, par exemple) n'est pas
+envoyée. Les réglages priment sur la même option dans *Advanced*.
 
 **N'importe quel autre modèle fal.ai** : choisis *Other fal.ai model…*, colle
 son identifiant (par exemple `fal-ai/flux/dev`) et clique sur ⟳. Ses options
@@ -204,6 +218,8 @@ free_plugin_blender/
   overlay/            barre de prompt du viewport (gpu/blf, champ texte, modal)
   catalog.py          catalogue de modèles (data/models.json + ton models.json)
   params.py           menus de modèles et options générées depuis les schémas
+  controls.py         réglages simples → champs de chaque modèle (sans bpy)
+  ui_controls.py      ces réglages dans la sidebar et la barre
   data/               models.json et schémas fal.ai embarqués
   props.py            réglages du panneau (scene.free_plugin)
   operators.py        un opérateur par bouton (bpy.ops.freeplugin.*)

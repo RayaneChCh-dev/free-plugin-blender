@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import bpy
 
-from . import params
+from . import params, ui_controls
 
 
 def _source_changed(self, context):
@@ -35,6 +35,7 @@ class FreePluginProps(bpy.types.PropertyGroup):
     image_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["image"])
     video_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["video"])
     mesh_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["mesh"])
+    choices: bpy.props.PointerProperty(type=ui_controls.FreePluginChoices)
 
     # Image
     image_prompt: bpy.props.StringProperty(name="Prompt")
@@ -102,7 +103,7 @@ class FreePluginProps(bpy.types.PropertyGroup):
     remesh_voxel: bpy.props.FloatProperty(name="Voxel size", default=0.02, min=0.001, soft_max=0.5, unit="LENGTH")
 
 
-classes = (*params.classes, FreePluginAsset, FreePluginProps)
+classes = (*params.classes, ui_controls.FreePluginChoices, FreePluginAsset, FreePluginProps)
 
 
 def register():

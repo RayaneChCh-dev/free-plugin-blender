@@ -18,7 +18,7 @@ from pathlib import Path
 
 import bpy
 
-from . import account, catalog, chat, net, prefs, scene, tasks
+from . import account, catalog, chat, controls, net, prefs, scene, tasks, ui_controls
 from .providers import fal, meshy, polyhaven
 
 TEXTURE_PROMPT = ("Seamless tileable PBR albedo texture of {}, flat even lighting, "
@@ -33,16 +33,18 @@ def _stamp(prompt, ext):
 class _ModelChoice:
     """What to call: (endpoint, schema or None, options) resolved on the main thread."""
 
-    def __init__(self, entry, endpoint, options, extra):
+    def __init__(self, entry, endpoint, options, extra, slot="", choices=None):
         self.entry, self.endpoint = entry, endpoint
         self.schema = catalog.cached_schema(endpoint) if endpoint else None
         self.options, self.extra = options, extra
+        self.slot, self.choices = slot, choices or {}
 
     def run(self, task, key, kind, out_dir, label, *, prompt=None, images=(), square=False):
         """Worker thread: call fal.ai and download the output file."""
         schema = self.schema or catalog.fetch_schema(self.endpoint)
         names = {f["name"] for f in schema.get("fields", [])}
         options = {k: v for k, v in self.options.items() if k in names}
+        options.update(controls.resolve(self.slot, self.choices, schema, self.entry))
         if square:
             options = fal.square_options(schema, options)
         options.update(self.extra)
@@ -86,7 +88,8 @@ class _Generate(bpy.types.Operator):
         if endpoint is None and not entry.get("provider"):
             raise RuntimeError(f"{entry['label']} needs an input image")
         extra = json.loads(self.options) if use_override and self.options else {}
-        return _ModelChoice(entry, endpoint, options, extra)
+        return _ModelChoice(entry, endpoint, options, extra, slot_name,
+                            ui_controls.get_choices(context.scene, slot_name))
 
     def input_image(self, choice_value, path_value):
         """CAMERA → capture now, FILE → check the path, anything else → None."""

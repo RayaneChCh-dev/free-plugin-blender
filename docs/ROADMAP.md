@@ -2,7 +2,7 @@
 
 Each phase ships as one or more `feat/…` pull requests (see the `feature-pr` skill).
 
-## Phase 0: how we work (this PR)
+## Phase 0: how we work (done, v0.4.0)
 
 - `feature-pr` skill: branch `feat/<feature>` from main → tests → PR to main → PR
   checked and green before the next feature.
@@ -13,13 +13,13 @@ Each phase ships as one or more `feat/…` pull requests (see the `feature-pr` s
 
 Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the same flow.
 
-## Phase 1: Claude models and effort
+## Phase 1: Claude models and effort (done, v0.5.0)
 
 - Precise model menu: Fable 5.1, Opus 5.5, Opus 5, Sonnet 5.5, Sonnet 5, Haiku 5.5
   (`claude --model <id>`).
 - Effort Low / Medium / High / XHigh / Max (`claude --effort`), **Medium by default**.
 
-## Phase 2: simple controls per mode, Animation tab
+## Phase 2: simple controls per mode (v0.6.0), Animation tab (next)
 
 - Viewport bar chips mapped to each model's own fields (declared in `models.json`);
   a control the model does not support is shown greyed out. Raw options stay under "Advanced".
