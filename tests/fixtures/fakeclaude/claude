@@ -36,7 +36,7 @@ if args[:2] == ["auth", "logout"]:
 
 message = sys.stdin.read()
 with open(os.path.join(state, "last_call.json"), "w") as handle:
-    json.dump({"argv": args, "stdin": message}, handle)
+    json.dump({"argv": args, "stdin": message, "tool_timeout": os.environ.get("MCP_TOOL_TIMEOUT")}, handle)
 
 
 def emit(event):

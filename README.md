@@ -422,6 +422,10 @@ The built-in MCP server also works from a terminal: in the preferences, pick a f
 **Free Plugin MCP port**, tick **Keep on for the terminal**, then **Copy the terminal command**
 copies the `claude mcp add --transport http …` command with its token.
 
+Claude Code stops waiting for a tool after 60 s by default, while a generation keeps running
+in Blender. Start it with a longer limit so `generate` and `run_script` can wait for the result:
+`MCP_TOOL_TIMEOUT=960000 claude`. The chat inside Blender already does this.
+
 With `mcp-for-blender`, Claude can call the operators directly:
 
 ```python

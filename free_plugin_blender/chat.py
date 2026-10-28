@@ -80,6 +80,11 @@ def _search_path() -> str:
     return os.pathsep.join([os.environ.get("PATH", ""), *map(str, extra)])
 
 
+# Claude Code gives up on an MCP tool call after 60 s by default, while the generation it started
+# keeps running (and is billed). Our tools wait longer on purpose (generate, assets, run_script).
+TOOL_TIMEOUT_MS = (mcpserver.script.MAX_TIMEOUT + 60) * 1000
+
+
 def subprocess_env() -> dict:
     return {**os.environ, "PATH": _search_path()}
 
@@ -312,6 +317,7 @@ def _send_api(text, scene, note, images=()):
 
 def _run(command, text):
     env = subprocess_env()
+    env.setdefault("MCP_TOOL_TIMEOUT", str(TOOL_TIMEOUT_MS))  # a value the user set wins
     try:
         process = subprocess.Popen(
             command, cwd=_workspace(), env=env, text=True, encoding="utf-8", errors="replace",

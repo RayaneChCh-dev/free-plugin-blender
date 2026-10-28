@@ -6,7 +6,10 @@ needs a display. Each run gets a fresh throwaway Blender; mcp-for-blender listen
 port 9877, never on your Blender's 9876.
 
 Usage: python3 scripts/bench_mcp_modes.py --blender /path/to/blender [--model claude-haiku-5-5]
-       [--modes EXTERNAL,BOTH,OWN] [--tasks build,batch,look] [--repeat 1] [--out results.json]
+       [--modes EXTERNAL,BOTH,OWN] [--tasks build,batch,look,assets] [--repeat 1] [--out results.json]
+
+The `generate` task is paid (fal.ai, about $0.02 a run): it needs FAL_KEY in the environment, or
+--fal-key-from-prefs to read the key saved in your real Blender preferences (never printed).
 """
 
 import argparse
@@ -29,6 +32,22 @@ def tokens(usage):
     return fresh + written + cached, cached, usage.get("output_tokens", 0) or 0
 
 
+def saved_fal_key(blender, work):
+    """The fal.ai key from the user's real Blender preferences, through a private file (never printed)."""
+    path = work / "fal.key"
+    path.touch(mode=0o600)
+    subprocess.run([blender, "-b", "--python-expr",
+                    "import bpy\n"
+                    "a = bpy.context.preferences.addons.get('bl_ext.user_default.free_plugin_blender')\n"
+                    f"open({str(path)!r}, 'w').write(a.preferences.fal_key.strip() if a else '')"],
+                   check=True, capture_output=True)
+    key = path.read_text().strip()
+    path.unlink()
+    if not key:
+        sys.exit("No fal.ai key in your Blender preferences")
+    return key
+
+
 def table(runs):
     lines = ["| Task | Mode | Done | Turns | Tool calls | Tokens in (cached) | Tokens out | Cost (API $) | Time |",
              "|---|---|---|---|---|---|---|---|---|"]
@@ -47,16 +66,20 @@ def main() -> int:
     parser.add_argument("--blender", default=os.environ.get("BLENDER", shutil.which("blender") or "blender"))
     parser.add_argument("--model", default="claude-haiku-5-5")
     parser.add_argument("--modes", default="EXTERNAL,BOTH,OWN")
-    parser.add_argument("--tasks", default="build,batch,look")
+    parser.add_argument("--tasks", default="build,batch,look,assets")
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--mcp-addon", default=str(MCP_ADDON), help="mcp-for-blender's Blender add-on (.py)")
     parser.add_argument("--out", default="")
+    parser.add_argument("--fal-key-from-prefs", action="store_true",
+                        help="read the fal.ai key from your Blender preferences, for the paid generate task")
     args = parser.parse_args()
 
     subprocess.run([sys.executable, str(ROOT / "scripts" / "build.py")], check=True)
     zip_path = max((ROOT / "dist").glob("free_plugin_blender-*.zip"), key=lambda p: p.stat().st_mtime)
     work = Path(tempfile.mkdtemp(prefix="fpb-bench-"))
     env = {**os.environ, "BLENDER_USER_RESOURCES": str(work / "profile")}
+    if args.fal_key_from_prefs:
+        env["FAL_KEY"] = saved_fal_key(args.blender, work)
     subprocess.run([args.blender, "--factory-startup", "-b", "--command", "extension", "install-file",
                     "-r", "user_default", str(zip_path)], env=env, check=True, capture_output=True)
     addons = work / "profile" / "scripts" / "addons"

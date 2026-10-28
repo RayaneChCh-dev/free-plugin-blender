@@ -70,6 +70,8 @@ def test():
     harness.check("built-in tools off", argv[argv.index("--tools") + 1] == "")
     harness.check("only the Blender MCP allowed", argv[argv.index("--allowedTools") + 1] == "mcp__blender"
                   and "--strict-mcp-config" in argv)
+    harness.check("MCP tool timeout raised above Claude Code's 60 s", int(call["tool_timeout"]) >= 900_000,
+                  call["tool_timeout"])
     harness.check("exact model id passed", argv[argv.index("--model") + 1] == "claude-haiku-5-5")
     harness.check("effort passed (default medium)", argv[argv.index("--effort") + 1] == "medium")
     mcp = json.loads(argv[argv.index("--mcp-config") + 1])["mcpServers"]["blender"]

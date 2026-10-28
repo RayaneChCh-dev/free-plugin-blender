@@ -111,7 +111,31 @@ Haiku 5.5:
   1.7× to 3.7× fewer tokens on these tasks. Not 10×: most of the cost is the context of the
   few turns left (system prompt, tool definitions, the screenshot Claude takes to check).
 
+## A paid generation (v0.16.1)
+
+Task **generate**: a TRELLIS teapot (about $0.02 on fal.ai) placed standing on the cube, mode `OWN`
+(run with `--fal-key-from-prefs`). The first real generations through the chat. Placement checked
+in the scene: the teapot's lowest point is at the top of the cube (z = 1.00) in every run.
+
+Before the fix (Opus 5.5, then Haiku 5.5):
+
+| Task | Mode | Done | Turns | Tool calls | Tokens in (cached) | Tokens out | Cost (API $) | Time |
+|---|---|---|---|---|---|---|---|---|
+| generate | OWN | yes | 8 | 7 | 52,064 (46,908) | 1,254 | 0.076 | 84 s |
+| generate | OWN | yes | 10 | 9 | 78,683 (71,665) | 1,619 | 0.003 | 98 s |
+
+Both runs hit **Claude Code's 60 s limit per MCP tool call**: `generate` (and `run_script` waiting
+for it) answered "The operation timed out." while the generation went on in Blender, so the model
+had to poll `task_status` in extra turns. The chat now starts Claude Code with
+`MCP_TOOL_TIMEOUT` = 16 min (unless the user set one), and the free **slow** task checks that a
+75 s call goes through.
+
+After the fix (Opus 5.5): one `run_script` generates, waits and places.
+
+| Task | Mode | Done | Turns | Tool calls | Tokens in (cached) | Tokens out | Cost (API $) | Time |
+|---|---|---|---|---|---|---|---|---|
+| generate | OWN | yes | 6 | 5 | 29,336 (24,199) | 933 | 0.065 | 186 s |
+
 ## Next
 
-- A task with a paid generation (generate, wait, place) when a fal.ai budget is set aside.
 - More runs per cell to measure the variance.
