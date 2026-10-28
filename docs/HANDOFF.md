@@ -1,6 +1,6 @@
 # Passation : reprendre le travail sur free-plugin-blender
 
-Dernière mise à jour : 2026-10-28 (v0.14.0 publiée). À lire en premier dans une nouvelle session.
+Dernière mise à jour : 2026-10-28 (v0.14.1 publiée). À lire en premier dans une nouvelle session.
 Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`.
 
 ## 1. Le projet en bref
@@ -55,7 +55,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.12.0 | README anglais « Kiln » (PR #13), fix du clipping du chat (PR #14), bibliothèque *My generations* + sortie par défaut `~/Kiln` (`library.py`) | publiée |
 | 0.13.0 | Actions après une image : matériau, onglet 3D avec l'image, scène par Claude avec l'image jointe (`attach.py`, `--input-format stream-json` vérifié avec le vrai Claude Code 2.1.312) | publiée |
 | 0.14.0 | *Render scene* comme source (image, 3D, vidéo : `scene.render_scene`) ; **+** de l'onglet Scene : capture du viewport sans la barre (`state.hidden`), vue caméra, rendu ou fichier, envoyés à Claude avec le message (`state.chat_images`) ; l'outil MCP `screenshot` masque aussi la barre | publiée |
-| 0.14.1 | Fix : une @mention retirée par × revient quand l'objet est désélectionné puis resélectionné (`_mentions`) | PR ouverte |
+| 0.14.1 | Fix : une @mention retirée par × revient quand l'objet est désélectionné puis resélectionné (`_mentions`) | publiée |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
@@ -181,6 +181,8 @@ python3 scripts/run_blender_tests.py --blender ~/.local/opt/blender-5.2.2-linux-
 python3 scripts/run_gui_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender   # fenêtre, pas en CI
 ```
 
+- Mesure des tokens par mode MCP (vrai Claude Code, abonnement de l'utilisateur) :
+  `python3 scripts/bench_mcp_modes.py --blender <blender> [--model claude-haiku-5-5]`, résultats dans `docs/BENCHMARK.md`.
 - Blender local : `~/.local/opt/blender-5.2.2-linux-x64/blender` ; la CI utilise 5.2.3.
 - Faux `claude` : `tests/fixtures/fakeclaude/claude`, état dans `$FAKE_CLAUDE_STATE`.
   Le code `GOOD` connecte le compte ; un message contenant « slow » attend 30 s.
