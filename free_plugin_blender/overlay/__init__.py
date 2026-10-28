@@ -1,7 +1,7 @@
 """The prompt bar in the 3D viewport.
 
 At rest it is a pill at the bottom of every 3D view. Clicking it opens a card:
-mode tabs above it (Scene builder, 3D, Image, Material, Video, Assets), a header
+mode tabs above it (Scene builder, 3D, Image, Material, Video, Animation, Assets), a header
 (new chat, title, price or account status), the conversation or search results,
 the selected objects as @mentions, the text field, a model menu and the
 Generate button.
@@ -20,7 +20,7 @@ import traceback
 
 import bpy
 
-from .. import account, catalog, chat, claude_models, prefs, tasks, ui_controls
+from .. import account, animation, catalog, chat, claude_models, prefs, presets, tasks, ui_controls
 from . import gfx
 from .field import Field, wrap
 
@@ -30,6 +30,7 @@ MODES = (
     ("image", "Image"),
     ("material", "Material"),
     ("video", "Video"),
+    ("animation", "Animation"),
     ("assets", "Assets"),
 )
 PLACEHOLDERS = {
@@ -38,6 +39,7 @@ PLACEHOLDERS = {
     "image": "Describe an image…",
     "material": "Describe a material for the active object…",
     "video": "Describe the shot…",
+    "animation": "Describe a motion: a joyful jump, a slow walk…",
     "assets": "Search free Poly Haven assets…",
 }
 SLOT_OF_MODE = {"mesh": "mesh", "image": "image", "material": "image", "video": "video"}
@@ -102,11 +104,15 @@ def _model_label(context, mode):
         return claude_models.model_label(prefs.get().chat_model)
     if mode == "assets":
         return dict(ASSET_KINDS)[props.ph_kind]
+    if mode == "animation":
+        return "Hunyuan Motion"
     entry = getattr(props, f"{SLOT_OF_MODE[mode]}_model").entry()
     return entry["label"] if entry else "Choose a model"
 
 
 def _needs_fal(context, mode):
+    if mode == "animation":
+        return True
     return mode in SLOT_OF_MODE and not (mode == "mesh" and context.scene.free_plugin.mesh_model.model == "meshy")
 
 
@@ -127,6 +133,8 @@ def _info(context, mode):
         return "Poly Haven · free", gfx.TEXT_DIM, None
     if _needs_fal(context, mode) and not prefs.fal_key():
         return "Add fal.ai key", gfx.DANGER, "prefs"
+    if mode == "animation":
+        return f"Price: {presets.MOTION_COST}", gfx.TEXT_DIM, None
     entry = getattr(context.scene.free_plugin, f"{SLOT_OF_MODE[mode]}_model").entry() or {}
     cost = entry.get("cost")
     return (f"Price: {cost}" if cost else "Price: see fal.ai"), gfx.TEXT_DIM, None
@@ -149,7 +157,14 @@ def _attachment(context, mode):
     if mode == "material":
         active = context.active_object
         return f"On: {active.name}" if active is not None and active.type == "MESH" else "Select a mesh first"
+    if mode == "animation":
+        rig = animation.character(context.active_object)[1]
+        return f"On: {rig.name}" if rig is not None else "No rig: a mannequin is created"
     return None
+
+
+def _duration_label(context):
+    return f"Duration: {context.scene.free_plugin.motion_duration:g} s"
 
 
 def _status():
@@ -418,7 +433,7 @@ def _draw_card(context, region, s, rects):
     if attachment:
         warning = attachment == "Select a mesh first"
         cx += _chip(rects, "attach_clear", cx, chip_y, ("⚠ " if warning else "◧ ") + attachment, chip_size, s,
-                    closable=mode != "material", icon_color=gfx.DANGER if warning else None) + 6 * s
+                    closable=mode not in ("material", "animation"), icon_color=gfx.DANGER if warning else None) + 6 * s
     for name in mentions:
         cx += _chip(rects, f"mention:{name}", cx, chip_y, "@" + name, chip_size, s, closable=True,
                     icon_color=gfx.ACCENT_HOVER) + 6 * s
@@ -452,6 +467,8 @@ def _draw_card(context, region, s, rects):
     if mode == "scene":
         effort = "Effort: " + claude_models.effort_label(prefs.get().chat_effort)
         _chip(rects, "effort", bx, by + 4 * s, effort, 12 * s, s, chevron=True)
+    elif mode == "animation":
+        _chip(rects, "duration", bx, by + 4 * s, _duration_label(context), 12 * s, s, chevron=True)
     elif mode in ui_controls.BAR_CONTROLS and not (mode == "mesh" and props_entry_is_provider(context)):
         slot = SLOT_OF_MODE[mode]
         room = text_x + text_width
@@ -534,6 +551,7 @@ def _submit(context):
         "image": ("generate_image", "image_prompt"),
         "material": ("generate_texture", "texture_prompt"),
         "video": ("generate_video", "video_prompt"),
+        "animation": ("generate_motion", "motion_prompt"),
         "assets": ("polyhaven_search", "ph_query"),
     }[mode]
     if not text and not (mode == "mesh" and props.mesh_source != "TEXT"):
@@ -595,6 +613,8 @@ def _click(context, hit):
         _open_menu(context, FREEPLUGIN_MT_overlay_model.bl_idname)
     elif hit == "effort":
         _open_menu(context, FREEPLUGIN_MT_overlay_effort.bl_idname)
+    elif hit == "duration":
+        _open_menu(context, FREEPLUGIN_MT_overlay_duration.bl_idname)
     elif hit.startswith("control:"):
         _prefix, slot, key = hit.split(":")
         ui_controls.open_menu(slot, key)
@@ -747,6 +767,8 @@ class FREEPLUGIN_OT_overlay_set(bpy.types.Operator):
             prefs.get().chat_model = self.value
         elif self.target == "chat_effort":
             prefs.get().chat_effort = self.value
+        elif self.target == "duration":
+            props.motion_duration = float(self.value)
         elif self.target == "kind":
             props.ph_kind = self.value
             props.ph_results.clear()
@@ -823,6 +845,11 @@ class FREEPLUGIN_MT_overlay_model(bpy.types.Menu):
                 op = layout.operator("freeplugin.overlay_set", text=label)
                 op.target, op.value = "kind", key
             return
+        if mode == "animation":
+            layout.label(text=f"Hunyuan Motion   {presets.MOTION_COST}", icon="CHECKMARK")
+            layout.separator()
+            layout.label(text="Presets: sidebar (N) › Free Plugin › Animation", icon="INFO")
+            return
         slot = SLOT_OF_MODE[mode]
         for entry in catalog.models(slot):
             cost = f"   {entry['cost']}" if entry.get("cost") else ""
@@ -843,6 +870,19 @@ class FREEPLUGIN_MT_overlay_effort(bpy.types.Menu):
             op = layout.operator("freeplugin.overlay_set", text=f"{label} — {text}",
                                  icon="CHECKMARK" if key == current else "BLANK1")
             op.target, op.value = "chat_effort", key
+
+
+class FREEPLUGIN_MT_overlay_duration(bpy.types.Menu):
+    bl_idname = "FREEPLUGIN_MT_overlay_duration"
+    bl_label = "Duration"
+
+    def draw(self, context):
+        layout = self.layout
+        current = context.scene.free_plugin.motion_duration
+        for seconds, label in presets.MOTION_DURATIONS:
+            op = layout.operator("freeplugin.overlay_set", text=f"{label} ({seconds:g} s)",
+                                 icon="CHECKMARK" if abs(seconds - current) < 1e-3 else "BLANK1")
+            op.target, op.value = "duration", str(seconds)
 
 
 class FREEPLUGIN_MT_overlay_attach(bpy.types.Menu):
@@ -936,6 +976,7 @@ classes = (
     FREEPLUGIN_OT_overlay_browse,
     FREEPLUGIN_MT_overlay_model,
     FREEPLUGIN_MT_overlay_effort,
+    FREEPLUGIN_MT_overlay_duration,
     FREEPLUGIN_MT_overlay_attach,
 )
 

@@ -13,6 +13,7 @@ from ..net import ApiError, request_json
 
 QUEUE = "https://queue.fal.run"
 RIG_MODEL = "fal-ai/meshy/rigging"  # ≈ $0.20, returns walk/run clips too
+MOTION_MODEL = "fal-ai/hunyuan-motion"  # ≈ $0.08, text → SMPL-H skeleton motion (FBX)
 
 # Turns a prompt into a clean reference picture for image-only 3D models.
 OBJECT_REFERENCE_SUFFIX = (
@@ -113,3 +114,19 @@ def rig_urls(result):
         raise ApiError(f"fal.ai returned no rigged model: {str(result)[:300]}")
     clips = result.get("basic_animations") or {}
     return [rigged] + [(clips.get(name) or {}).get("url") for name in ("walking_glb", "running_glb")]
+
+
+def animation_url(result):
+    """The animated character GLB of a rigging call made with `enable_animation`."""
+    url = (result.get("animation_glb") or {}).get("url")
+    if not url:
+        raise ApiError(f"fal.ai returned no animation: {str(result)[:300]}")
+    return url
+
+
+def motion_url(result):
+    """The FBX of a Hunyuan Motion call."""
+    url = (result.get("fbx_file") or {}).get("url")
+    if not url:
+        raise ApiError(f"fal.ai returned no motion file: {str(result)[:300]}")
+    return url

@@ -19,7 +19,7 @@ Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the
   (`claude --model <id>`).
 - Effort Low / Medium / High / XHigh / Max (`claude --effort`), **Medium by default**.
 
-## Phase 2: simple controls per mode (v0.6.0), Animation tab (next)
+## Phase 2: simple controls per mode (v0.6.0), Animation tab (v0.7.0)
 
 - Viewport bar chips mapped to each model's own fields (declared in `models.json`);
   a control the model does not support is shown greyed out. Raw options stay under "Advanced".
@@ -27,8 +27,10 @@ Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the
   - 3D: mode (preview / full), model type (standard / low-poly / smart topology),
     topology (tris / quads), face count, PBR, texture resolution.
   - Video: duration, ratio, resolution, audio.
-- Animation tab: presets first (Meshy rigging + animation library on fal.ai), and a
-  free text → motion option (`fal-ai/hunyuan-motion`) retargeted onto the character.
+- Animation tab (v0.7.0): 678 Meshy presets (rigging + animation library on fal.ai,
+  the rig is redone per preset), free text → motion (`fal-ai/hunyuan-motion`)
+  retargeted onto the character's rig, and a free motion copy between two rigs.
+- Next: retexture through `fal-ai/meshy/retexture`, so it no longer needs a Meshy key.
 
 ## Phase 3: our own local MCP server
 

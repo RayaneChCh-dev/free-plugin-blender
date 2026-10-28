@@ -12,6 +12,9 @@ abonnement Claude (via Claude Code et un add-on MCP).
 | Texte / vue caméra → vidéo (panneau masqué par défaut) | fal.ai | Kling 3.0 Pro (`fal-ai/kling-video/v3/pro/*`) | ~0,14 $ / s |
 | Texte / image / vue caméra → modèle 3D | fal.ai | au choix, voir ci-dessous | 0,02 à 0,53 $ |
 | Auto-rig + animations marche/course | fal.ai | Meshy rigging (`fal-ai/meshy/rigging`) | ~0,20 $ |
+| Animation : 678 presets Meshy | fal.ai | Meshy rigging + bibliothèque d'animations | ~0,32 $ / preset |
+| Animation : mouvement décrit en texte | fal.ai | Hunyuan Motion (`fal-ai/hunyuan-motion`) | ~0,08 $ |
+| Copier un mouvement d'un rig à un autre | Blender | — | **gratuit** |
 | Retexture d'un modèle | Meshy (clé optionnelle) | — | crédits Meshy |
 | HDRI, textures PBR, **modèles 3D** | Poly Haven | CC0 | **gratuit** |
 | Voxel remesh, LOD | Blender | — | **gratuit** |
@@ -34,7 +37,7 @@ Prix indicatifs relevés en octobre 2026, à vérifier sur
 [fal.ai/pricing](https://fal.ai/pricing) et [meshy.ai](https://www.meshy.ai/pricing).
 
 Aucune dépendance : uniquement la bibliothèque standard Python. Le zip fait
-moins de 60 Ko.
+environ 110 Ko.
 
 ## Installation
 
@@ -43,7 +46,7 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.6.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.7.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
 ## Configuration (Preferences → Add-ons → Free Plugin Blender)
@@ -129,7 +132,7 @@ En bas de chaque vue 3D, une barre **« Describe the scene you imagine… »**.
 Clique dessus : elle s'ouvre en carte avec
 
 - des **onglets de mode** : *Scene builder* (chat avec Claude), *3D Model*,
-  *Image*, *Material*, *Video* (si activé), *Assets* (Poly Haven) ;
+  *Image*, *Material*, *Video* (si activé), *Animation*, *Assets* (Poly Haven) ;
 - la conversation, et **+** en haut à gauche pour en commencer une nouvelle ;
 - en haut à droite, l'état ou le prix : cliquer sur une étiquette rouge
   (« Connect Claude », « Add fal.ai key »…) ouvre directement la solution ;
@@ -148,9 +151,36 @@ La barre se désactive dans les préférences (*Viewport prompt bar*).
 ## La sidebar
 
 Onglet **Free Plugin** (N) : en-tête d'état (fal.ai, Claude Code, MCP, Meshy),
-onglets **Scene · 3D · Image · Video · Assets**, sections repliables
+onglets **Scene · 3D · Image · Video · Animation · Assets**, sections repliables
 (3D Model, Auto-Rig, Retexture, Mesh tools, Image, Material…) avec toutes les
 options des modèles, et l'historique **Generations**.
+
+## Animation
+
+Onglet **Animation** de la sidebar, et mode *Animation* de la barre. Le
+personnage est l'**objet actif** : son maillage ou son armature. Il doit
+regarder vers **-Y** dans Blender (exigence de Meshy).
+
+- **Presets** (~0,32 $) : 678 animations de la bibliothèque Meshy (marche,
+  course, danse, combat, gestes du quotidien…), avec recherche, catégorie et
+  filtre *In place* (mouvements sur place). *Animate* applique le preset choisi.
+  - Personnage **sans rig** : Meshy le rigge et l'anime. Le personnage riggé
+    remplace le maillage d'origine (caché, pas supprimé) et devient l'objet actif.
+  - Personnage **avec rig** : le mouvement est copié sur ce rig, comme une
+    nouvelle *action* nommée d'après le preset.
+  - fal.ai n'a pas d'endpoint pour animer un rig existant : chaque preset refait
+    le rig chez Meshy, d'où le prix.
+- **Mouvement libre** (~0,08 $) : décris un mouvement (« a joyful jump »),
+  de 0,5 à 12 s. Hunyuan Motion le génère sur un mannequin, puis il est copié
+  sur le rig du personnage. Sans rig, le mannequin animé est gardé, au curseur 3D.
+  Dans la barre : le texte, la puce *Duration* et la puce du rig visé.
+- **Copier un mouvement** (gratuit) : sélectionne l'armature animée, puis
+  Ctrl+clic sur celle qui reçoit le mouvement, et *Copy motion*.
+
+Chaque mouvement est une action gardée dans le .blend (*fake user*) : le menu
+*Motion* de la section *Character* passe de l'une à l'autre. La copie reconnaît
+les noms d'os SMPL, Meshy, Mixamo, Rigify et Unreal ; il faut au moins 8
+articulations communes.
 
 ## Chat avec Claude
 
@@ -197,6 +227,8 @@ bpy.ops.freeplugin.generate_texture(prompt="green zellige tiles")
 bpy.ops.freeplugin.generate_3d(prompt="a clay tagine pot", model="trellis")
 bpy.ops.freeplugin.generate_video(prompt="slow dolly in", model="kling25_turbo",
                                   options='{"duration": "10"}')
+bpy.ops.freeplugin.animate_preset(preset_id=106)   # id de data/animations.json
+bpy.ops.freeplugin.generate_motion(prompt="a joyful jump", duration=3)
 ```
 
 `model` accepte une clé du catalogue ou n'importe quel identifiant fal.ai,
@@ -220,9 +252,13 @@ free_plugin_blender/
   params.py           menus de modèles et options générées depuis les schémas
   controls.py         réglages simples → champs de chaque modèle (sans bpy)
   ui_controls.py      ces réglages dans la sidebar et la barre
-  data/               models.json et schémas fal.ai embarqués
+  data/               models.json, animations.json et schémas fal.ai embarqués
   props.py            réglages du panneau (scene.free_plugin)
   operators.py        un opérateur par bouton (bpy.ops.freeplugin.*)
+  animation.py        presets, mouvement libre, copie de mouvement
+  presets.py          bibliothèque d'animations Meshy et recherche (sans bpy)
+  rigmap.py           articulations humanoïdes d'après les noms d'os (sans bpy)
+  retarget.py         copie d'un mouvement d'une armature à une autre
   panels.py           sidebar N
   tasks.py            réseau dans un thread, scène sur le thread principal
   scene.py            import GLB, matériaux, HDRI, plan image, strip vidéo
