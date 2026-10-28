@@ -26,7 +26,7 @@ may be listening there.
 
 - Modules under `providers/`, `catalog.py`, `overlay/field.py`, `overlay/richtext.py`,
   `overlay/thread.py`, `presets.py`, `rigmap.py`,
-  `agent.py`, `mcpserver/protocol.py` and `mcpserver/httpserver.py` must not import bpy.
+  `agent.py`, `attach.py`, `library.py`, `mcpserver/protocol.py` and `mcpserver/httpserver.py` must not import bpy.
 - Network calls run on worker threads (`tasks.run`); scene changes run on the main thread.
 - Release: bump the manifest version, merge to main, then push the tag `vX.Y.Z`.
   The Release workflow publishes the zip.

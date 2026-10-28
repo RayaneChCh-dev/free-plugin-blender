@@ -195,6 +195,20 @@ def test():
     later = [m for m in [r for r in requests if r[0] == "POST"][-1][3]["messages"] if m["role"] == "assistant"]
     harness.check("DeepSeek: reasoning of earlier turns kept", [m.get("reasoning_content") for m in later][:2]
                   == ["Je dois lire la scène.", "Compté."])
+    png, _glb = harness.fixture_files()
+    chat.send("construis cette scène", scene, images=[png])
+    wait_chat(chat, mcp, tasks)
+    sent = [r for r in requests if r[0] == "POST"][-1][3]["messages"]
+    asked = next(m for m in reversed(sent) if m["role"] == "user")
+    harness.check("DeepSeek: image replaced by a note", isinstance(asked["content"], str)
+                  and "cannot read images" in asked["content"], asked["content"])
+    prefs.chat_provider = "OPENAI"
+    chat.send("construis cette scène", scene, images=[png])
+    wait_chat(chat, mcp, tasks)
+    sent = [r for r in requests if r[0] == "POST"][-1][3]["messages"]
+    asked = next(m for m in reversed(sent) if m["role"] == "user")
+    harness.check("OpenAI: image sent as a data URI", [part["type"] for part in asked["content"]]
+                  == ["text", "image_url"] and asked["content"][1]["image_url"]["url"].startswith("data:image/png"))
     os.environ.pop("OPENAI_API_KEY", None)
     prefs.chat_provider = "CLAUDE"
 

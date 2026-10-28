@@ -52,7 +52,8 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés (PR #7) | publiée |
 | 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR #9, DeepSeek PR #10) | publiée |
 | 0.11.0 | Refonte de la barre du viewport (PR #11) | publiée |
-| 0.12.0 | README anglais « Kiln » (PR #13), fix du clipping du chat (PR #14), bibliothèque *My generations* + sortie par défaut `~/Kiln` (`library.py`) | à publier |
+| 0.12.0 | README anglais « Kiln » (PR #13), fix du clipping du chat (PR #14), bibliothèque *My generations* + sortie par défaut `~/Kiln` (`library.py`) | publiée |
+| 0.13.0 | Actions après une image : matériau, onglet 3D avec l'image, scène par Claude avec l'image jointe (`attach.py`, `--input-format stream-json` vérifié avec le vrai Claude Code 2.1.312) | à publier |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 

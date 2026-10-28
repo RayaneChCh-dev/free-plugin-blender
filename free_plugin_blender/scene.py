@@ -51,6 +51,23 @@ def load_image(path: Path, colorspace="sRGB"):
     return image
 
 
+def thumbnail(path: Path, dest: Path, max_side=1568) -> Path:
+    """A JPEG copy of an image, no side longer than max_side (small enough to send in a chat message)."""
+    source = bpy.data.images.load(str(path), check_existing=False)
+    try:
+        copy = source.copy()
+        width, height = copy.size
+        scale = min(1.0, max_side / max(width, height, 1))
+        if scale < 1.0:
+            copy.scale(max(1, round(width * scale)), max(1, round(height * scale)))
+        copy.filepath_raw, copy.file_format = str(dest), "JPEG"
+        copy.save()
+        bpy.data.images.remove(copy)
+    finally:
+        bpy.data.images.remove(source)
+    return dest
+
+
 def image_to_camera_background(image):
     camera = bpy.context.scene.camera
     if camera is None:

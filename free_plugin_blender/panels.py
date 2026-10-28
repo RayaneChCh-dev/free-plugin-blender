@@ -249,9 +249,23 @@ def _draw_generations(layout):
         box = body.box().column(align=True)
         box.label(text=task.label, icon=_TASK_ICONS[task.state])
         box.label(text=task.detail[:80])
+        if task.state == "done" and task.label.startswith("Image:") and isinstance(task.result, str):
+            _draw_image_actions(box.row(align=True), task.result, labels=True)
     row = body.row(align=True)
     row.operator("freeplugin.open_outputs", text="Open folder", icon="FILE_FOLDER")
     row.operator("freeplugin.clear_tasks", text="Clear", icon="TRASH")
+
+
+ACTION_ICONS = {"MATERIAL": "MATERIAL", "MESH": "MESH_MONKEY", "SCENE": "SCENE_DATA"}
+
+
+def _draw_image_actions(row, path, *, labels):
+    """Use as material / Make 3D / Build a scene, for one generated image."""
+    from .operators import GENERATION_ACTIONS
+
+    for action, label, _text in GENERATION_ACTIONS:
+        op = row.operator("freeplugin.use_generation", text=label if labels else "", icon=ACTION_ICONS[action])
+        op.filepath, op.action = path, action
 
 
 LIBRARY_ICONS = {"MESH": "MESH_MONKEY", "ANIMATION": "ARMATURE_DATA", "IMAGE": "IMAGE_DATA", "VIDEO": "FILE_MOVIE"}
@@ -269,9 +283,12 @@ def _draw_library(layout, props):
         body.label(text="Nothing yet: what you generate lands here.", icon="INFO")
     column = body.column(align=True)
     for entry in entries[:40]:
-        op = column.operator("freeplugin.library_use", text=f"{entry.name}  ·  {entry.label}",
-                             icon=LIBRARY_ICONS[entry.kind])
+        row = column.row(align=True)
+        op = row.operator("freeplugin.library_use", text=f"{entry.name}  ·  {entry.label}",
+                          icon=LIBRARY_ICONS[entry.kind])
         op.filepath = str(entry.path)
+        if entry.kind == "IMAGE":
+            _draw_image_actions(row, str(entry.path), labels=False)
     if len(entries) > 40:
         body.label(text=f"+{len(entries) - 40} more: search to narrow down")
     row = body.row(align=True)
