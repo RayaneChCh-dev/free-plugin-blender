@@ -18,6 +18,8 @@ def fake_fal(method, url, headers=None, body=None, timeout=60):
         return {"model_mesh": {"url": "https://x/m.glb"}}
     if "tripo" in model:
         return {"model_mesh": {"url": "https://x/m.fbx"}, "model_urls": {"glb": {"url": "https://x/m.glb"}}}
+    if "retexture" in model:
+        return {"model_glb": {"url": "https://x/t.glb"}, "model_urls": {"glb": {"url": "https://x/t.glb"}}}
     if "rigging" in model:
         return {"rigged_character_glb": {"url": "https://x/r.glb"}, "basic_animations": {},
                 "animation_glb": {"url": "https://x/animation.glb"}}

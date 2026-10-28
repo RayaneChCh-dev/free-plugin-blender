@@ -13,6 +13,7 @@ from ..net import ApiError, request_json
 
 QUEUE = "https://queue.fal.run"
 RIG_MODEL = "fal-ai/meshy/rigging"  # ≈ $0.20, returns walk/run clips too
+RETEXTURE_MODEL = "fal-ai/meshy/retexture"  # Meshy retexture, the mesh is sent as a data URI
 MOTION_MODEL = "fal-ai/hunyuan-motion"  # ≈ $0.08, text → SMPL-H skeleton motion (FBX)
 
 # Turns a prompt into a clean reference picture for image-only 3D models.

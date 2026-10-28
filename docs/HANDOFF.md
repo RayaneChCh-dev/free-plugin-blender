@@ -47,11 +47,12 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.4.0 | Barre de prompt dans le viewport, chat Claude, compte Claude (PR #2) | publiée |
 | 0.5.0 | Modèles Claude précis + effort Medium par défaut (PR #3) | publiée |
 | 0.6.0 | Réglages simples par mode (`controls.py`), Meshy 7 via fal.ai (PR #4) | publiée |
-| 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (branche `feat/animation-tab`) | PR ouverte |
+| 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (PR #5) | publiée |
+| 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif | PR `feat/fal-retexture` |
 
-## 4. Dernier travail : onglet Animation (v0.7.0, branche `feat/animation-tab`)
+## 4. Onglet Animation (v0.7.0, publiée)
 
-PR ouverte, à fusionner par l'utilisateur, puis tag `v0.7.0`.
+Fusionnée (PR #5), release v0.7.0 publiée. Ensuite : v0.8.0, retexture via fal.ai (PR `feat/fal-retexture`).
 
 - `presets.py` (sans bpy) : `data/animations.json` (678 presets Meshy), `search()`,
   prix et durées. Régénération du JSON :
@@ -74,8 +75,7 @@ PR ouverte, à fusionner par l'utilisateur, puis tag `v0.7.0`.
 
 ### Ensuite (roadmap)
 
-- **Bonus noté** : `fal-ai/meshy/retexture` existe. La retexture peut passer par
-  fal.ai au lieu d'exiger une clé Meshy (aujourd'hui `meshy.py`, direct).
+- ~~Retexture via fal.ai~~ : fait en v0.8.0 (choix fal.ai / Meshy dans la section Retexture).
 - **Phase 3** : notre propre serveur MCP local avec des outils de haut niveau
   (résumé de scène, primitives, matériaux, rendu, capture, génération, Poly Haven,
   Python en dernier recours). Il remplace la dépendance à `mcp-for-blender` et le

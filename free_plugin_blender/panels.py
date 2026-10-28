@@ -251,11 +251,18 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
                 body.operator("freeplugin.rig", icon="PLAY")
             body = _section(layout, "retexture", "Retexture", "BRUSH_DATA", closed=True)
             if body is not None:
+                body.prop(props, "retexture_provider", text="")
+                on_fal = props.retexture_provider == "FAL"
                 column = body.column()
-                column.enabled = bool(prefs.meshy_key())
+                column.enabled = bool(prefs.fal_key() if on_fal else prefs.meshy_key())
                 if not column.enabled:
-                    body.label(text="Needs a Meshy key", icon="INFO")
+                    body.label(text="Needs a fal.ai key" if on_fal else "Needs a Meshy key", icon="INFO")
                 column.prop(props, "retexture_prompt", text="Style")
+                row = column.row()
+                row.prop(props, "retexture_pbr")
+                if on_fal:
+                    row.prop(props, "retexture_resolution", text="")
+                    column.label(text="Price: see fal.ai (Meshy retexture)", icon="INFO")
                 column.operator("freeplugin.retexture", icon="PLAY")
             body = _section(layout, "local", "Mesh tools (free)", "MOD_REMESH", closed=True)
             if body is not None:

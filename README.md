@@ -15,7 +15,7 @@ abonnement Claude (via Claude Code et un add-on MCP).
 | Animation : 678 presets Meshy | fal.ai | Meshy rigging + bibliothèque d'animations | ~0,32 $ / preset |
 | Animation : mouvement décrit en texte | fal.ai | Hunyuan Motion (`fal-ai/hunyuan-motion`) | ~0,08 $ |
 | Copier un mouvement d'un rig à un autre | Blender | — | **gratuit** |
-| Retexture d'un modèle | Meshy (clé optionnelle) | — | crédits Meshy |
+| Retexture d'un modèle | fal.ai, ou Meshy avec ta clé | Meshy retexture (`fal-ai/meshy/retexture`) | voir fal.ai |
 | HDRI, textures PBR, **modèles 3D** | Poly Haven | CC0 | **gratuit** |
 | Voxel remesh, LOD | Blender | — | **gratuit** |
 
@@ -46,7 +46,7 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.7.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.8.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
 ## Configuration (Preferences → Add-ons → Free Plugin Blender)
@@ -61,7 +61,8 @@ Les préférences sont organisées en trois étapes :
 2. **fal.ai**, pour générer images, matériaux, 3D et vidéos (paiement à
    l'usage). *Get a key* ouvre <https://fal.ai/dashboard/keys>. C'est
    optionnel : le chat, Poly Haven et les outils de maillage marchent sans.
-   La clé **Meshy** n'est utile que pour la retexture.
+   La clé **Meshy** est facultative : elle sert seulement si tu as des crédits
+   Meshy et préfères les utiliser (3D, rig, retexture) au lieu de fal.ai.
 3. **Blender MCP**, qui permet à Claude d'agir sur la scène : état du port et
    lien vers l'add-on `mcp-for-blender`.
 
