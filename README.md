@@ -43,7 +43,7 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.4.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.5.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
 ## Configuration (Preferences → Add-ons → Free Plugin Blender)
@@ -122,7 +122,9 @@ Clique dessus : elle s'ouvre en carte avec
 - les objets sélectionnés en **@mentions** (× pour en retirer un) : Claude
   reçoit la sélection avec ton message ;
 - **+** pour partir de la vue caméra ou d'une image, et le **menu de modèle**
-  avec les prix ;
+  avec les prix ; en mode *Scene builder*, le modèle Claude (Opus 5.5 par défaut,
+  Fable 5.1, Opus 5, Sonnet 5.5, Sonnet 5, Haiku 5.5) et l'**effort** (Low, Medium par
+  défaut, High, XHigh, Max) ;
 - le bouton **Send / Generate / Search** (Stop pendant une réponse de Claude).
 
 Entrée envoie, Maj+Entrée va à la ligne, Échap ferme. Pendant la saisie, les
@@ -154,8 +156,10 @@ Dans la sidebar, *Transcript* copie toute la
 conversation dans le Text Editor, *New* repart de zéro. La conversation est
 enregistrée dans le fichier .blend.
 
-Réglages dans *Preferences → Add-ons → Free Plugin Blender → Chat* : chemin de
-`claude`, modèle (Opus, Sonnet, Haiku), commande et port du serveur MCP.
+Réglages dans *Preferences → Add-ons → Free Plugin Blender* : modèle Claude et
+effort (aussi dans la barre et la sidebar), chemin de `claude`, commande et port
+du serveur MCP. Plus d'effort : de meilleurs résultats sur les scènes difficiles,
+mais des réponses plus lentes et plus d'usage de ton abonnement.
 
 Sécurité : le chat lance `claude -p` avec tous les outils intégrés désactivés
 (`--tools ""`), seulement le serveur MCP Blender chargé et autorisé

@@ -20,7 +20,7 @@ import traceback
 
 import bpy
 
-from .. import account, catalog, chat, prefs, tasks
+from .. import account, catalog, chat, claude_models, prefs, tasks
 from . import gfx
 from .field import Field, wrap
 
@@ -41,8 +41,6 @@ PLACEHOLDERS = {
     "assets": "Search free Poly Haven assets…",
 }
 SLOT_OF_MODE = {"mesh": "mesh", "image": "image", "material": "image", "video": "video"}
-CHAT_MODELS = (("DEFAULT", "Claude (default)"), ("OPUS", "Claude Opus"), ("SONNET", "Claude Sonnet"),
-               ("HAIKU", "Claude Haiku"))
 ASSET_KINDS = (("hdris", "HDRI"), ("textures", "Textures"), ("models", "Models"))
 _PASS_THROUGH_TYPES = {"MOUSEMOVE", "INBETWEEN_MOUSEMOVE", "TIMER", "TIMER_REPORT", "TIMERREGION",
                        "WINDOW_DEACTIVATE", "NONE", "TRACKPADPAN", "TRACKPADZOOM", "MOUSEROTATE",
@@ -101,7 +99,7 @@ def _mentions(context):
 def _model_label(context, mode):
     props = context.scene.free_plugin
     if mode == "scene":
-        return dict(CHAT_MODELS)[prefs.get().chat_model]
+        return claude_models.model_label(prefs.get().chat_model)
     if mode == "assets":
         return dict(ASSET_KINDS)[props.ph_kind]
     entry = getattr(props, f"{SLOT_OF_MODE[mode]}_model").entry()
@@ -446,7 +444,10 @@ def _draw_card(context, region, s, rects):
         gfx.icon_plus(bx + box / 2, by + 2 * s + box / 2, 11 * s, gfx.TEXT_DIM)
         rects.append(("attach", bx, by + 2 * s, box, box))
         bx += box + 6 * s
-    _chip(rects, "model", bx, by + 4 * s, _model_label(context, mode), 12 * s, s, chevron=True)
+    bx += _chip(rects, "model", bx, by + 4 * s, _model_label(context, mode), 12 * s, s, chevron=True) + 6 * s
+    if mode == "scene":
+        effort = "Effort: " + claude_models.effort_label(prefs.get().chat_effort)
+        _chip(rects, "effort", bx, by + 4 * s, effort, 12 * s, s, chevron=True)
 
     # Generate / Send / Stop.
     gx = x + width - pad - generate_width
@@ -575,6 +576,8 @@ def _click(context, hit):
         state.scroll = 0.0
     elif hit == "model":
         _open_menu(context, FREEPLUGIN_MT_overlay_model.bl_idname)
+    elif hit == "effort":
+        _open_menu(context, FREEPLUGIN_MT_overlay_effort.bl_idname)
     elif hit == "attach":
         _open_menu(context, FREEPLUGIN_MT_overlay_attach.bl_idname)
     elif hit == "attach_clear":
@@ -721,6 +724,8 @@ class FREEPLUGIN_OT_overlay_set(bpy.types.Operator):
         props = context.scene.free_plugin
         if self.target == "chat_model":
             prefs.get().chat_model = self.value
+        elif self.target == "chat_effort":
+            prefs.get().chat_effort = self.value
         elif self.target == "kind":
             props.ph_kind = self.value
             props.ph_results.clear()
@@ -786,8 +791,10 @@ class FREEPLUGIN_MT_overlay_model(bpy.types.Menu):
         layout = self.layout
         mode = state.mode
         if mode == "scene":
-            for key, label in CHAT_MODELS:
-                op = layout.operator("freeplugin.overlay_set", text=label)
+            current = prefs.get().chat_model
+            for key, label, _text in claude_models.MODELS:
+                op = layout.operator("freeplugin.overlay_set", text=label,
+                                     icon="CHECKMARK" if key == current else "BLANK1")
                 op.target, op.value = "chat_model", key
             return
         if mode == "assets":
@@ -802,6 +809,19 @@ class FREEPLUGIN_MT_overlay_model(bpy.types.Menu):
             op.target, op.value = slot, entry["key"]
         layout.separator()
         layout.label(text="Other fal.ai models: sidebar (N) › Free Plugin", icon="INFO")
+
+
+class FREEPLUGIN_MT_overlay_effort(bpy.types.Menu):
+    bl_idname = "FREEPLUGIN_MT_overlay_effort"
+    bl_label = "Effort"
+
+    def draw(self, context):
+        layout = self.layout
+        current = prefs.get().chat_effort
+        for key, label, text in claude_models.EFFORTS:
+            op = layout.operator("freeplugin.overlay_set", text=f"{label} — {text}",
+                                 icon="CHECKMARK" if key == current else "BLANK1")
+            op.target, op.value = "chat_effort", key
 
 
 class FREEPLUGIN_MT_overlay_attach(bpy.types.Menu):
@@ -894,6 +914,7 @@ classes = (
     FREEPLUGIN_OT_overlay_pick_file,
     FREEPLUGIN_OT_overlay_browse,
     FREEPLUGIN_MT_overlay_model,
+    FREEPLUGIN_MT_overlay_effort,
     FREEPLUGIN_MT_overlay_attach,
 )
 

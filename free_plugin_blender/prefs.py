@@ -7,6 +7,8 @@ from pathlib import Path
 
 import bpy
 
+from . import claude_models
+
 ADDON_ID = __package__
 
 
@@ -50,9 +52,15 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
     )
     chat_model: bpy.props.EnumProperty(
         name="Claude model",
-        description="Model the chat uses (Haiku is the fastest, Opus the most capable)",
-        items=[("DEFAULT", "Claude Code default", ""), ("OPUS", "Opus", ""), ("SONNET", "Sonnet", ""),
-               ("HAIKU", "Haiku (fastest)", "")],
+        description="Model the chat uses",
+        items=[(key, label, text, 100 + index) for index, (key, label, text) in enumerate(claude_models.MODELS)],
+        default=claude_models.DEFAULT_MODEL,
+    )
+    chat_effort: bpy.props.EnumProperty(
+        name="Effort",
+        description="How much Claude thinks before acting. More effort: better on hard scenes, slower, more usage",
+        items=[(key, label, text, 200 + index) for index, (key, label, text) in enumerate(claude_models.EFFORTS)],
+        default=claude_models.DEFAULT_EFFORT,
     )
     mcp_command: bpy.props.StringProperty(
         name="Blender MCP command", default="uvx mcp-for-blender",
@@ -71,7 +79,9 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         box = layout.box()
         box.label(text="1 · Claude — chat and scene building, with your subscription", icon="USER")
         panels.draw_claude_account(box)
-        box.prop(self, "chat_model")
+        row = box.row()
+        row.prop(self, "chat_model")
+        row.prop(self, "chat_effort")
 
         box = layout.box()
         box.label(text="2 · fal.ai — image, material, 3D and video generation (pay per use)", icon="IMAGE_DATA")

@@ -102,6 +102,9 @@ def _version():
 def _draw_chat(layout, context):
     props = context.scene.free_plugin
     state = chat.state
+    row = layout.row(align=True)
+    row.prop(prefs.get(), "chat_model", text="")
+    row.prop(prefs.get(), "chat_effort", text="")
     width = max(24, int((context.region.width - 50) / (7 * context.preferences.system.ui_scale)))
     column = layout.column(align=True)
     shown = state.messages[-10:]
@@ -173,7 +176,6 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
             body = _section(layout, "bar", "Viewport bar", "WINDOW", closed=True)
             if body is not None:
                 body.prop(settings, "overlay_enabled", text="Show the prompt bar in the 3D view")
-                body.prop(settings, "chat_model")
                 body.label(text="Click the bar, type, Enter. Shift+Enter: new line, Esc: close.", icon="INFO")
 
         elif tab == "MESH":
