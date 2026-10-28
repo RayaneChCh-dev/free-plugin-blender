@@ -20,7 +20,7 @@ import traceback
 
 import bpy
 
-from .. import account, animation, catalog, chat, claude_models, prefs, presets, tasks, ui_controls
+from .. import account, animation, catalog, chat, claude_models, mcpserver, prefs, presets, tasks, ui_controls
 from . import gfx
 from .field import Field, wrap
 
@@ -125,8 +125,11 @@ def _info(context, mode):
             return "Signing in… (browser)", gfx.TEXT_DIM, None
         if account.account.logged_in is False:
             return "Connect Claude", gfx.DANGER, "connect"
-        if not chat.state.mcp_listening:
+        mode = prefs.get().mcp_mode
+        if mode != "OWN" and not chat.state.mcp_listening:
             return "MCP add-on off", gfx.DANGER, "prefs"
+        if mode != "EXTERNAL" and mcpserver.state.error:
+            return "MCP port taken", gfx.DANGER, "prefs"
         plan = f"Claude {account.account.plan}" if account.account.plan else "Claude"
         return plan, gfx.TEXT_DIM, None
     if mode == "assets":

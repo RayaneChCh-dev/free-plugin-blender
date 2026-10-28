@@ -12,6 +12,21 @@ from . import claude_models
 ADDON_ID = __package__
 
 
+def _mcp_changed(self, context):
+    from . import mcpserver
+
+    mcpserver.sync()
+
+
+MCP_MODES = (
+    ("EXTERNAL", "mcp-for-blender", "The mcp-for-blender add-on's tools (the default, the most complete)"),
+    ("BOTH", "mcp-for-blender + Free Plugin tools",
+     "Both: Claude uses the compact Free Plugin tools first, mcp-for-blender for the rest"),
+    ("OWN", "Free Plugin tools only (lighter)",
+     "Only the built-in Free Plugin tools: fewer tokens, no uv or mcp-for-blender needed"),
+)
+
+
 def _overlay_toggled(self, context):
     from . import overlay
 
@@ -70,6 +85,25 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         name="MCP add-on port", default=9876, min=1, max=65535,
         description="Port of the Blender MCP add-on in this Blender (passed to the MCP server)",
     )
+    mcp_mode: bpy.props.EnumProperty(
+        name="Claude's Blender tools",
+        description="Which MCP tools the chat gives Claude to act on this Blender",
+        items=[(key, label, text, 300 + index) for index, (key, label, text) in enumerate(MCP_MODES)],
+        default="EXTERNAL", update=_mcp_changed,
+    )
+    own_mcp_port: bpy.props.IntProperty(
+        name="Free Plugin MCP port", default=0, min=0, max=65535, update=_mcp_changed,
+        description="0: a free port chosen at start (each Blender gets its own). "
+                    "Set a fixed port to use it from Claude Code in a terminal",
+    )
+    own_mcp_terminal: bpy.props.BoolProperty(
+        name="Keep it on for Claude Code in a terminal", update=_mcp_changed,
+        description="Run the Free Plugin MCP server even when the chat does not use it",
+    )
+    own_mcp_token: bpy.props.StringProperty(
+        name="Token", subtype="PASSWORD", options={"HIDDEN"},
+        description="Secret every request to the Free Plugin MCP server must carry (made automatically)",
+    )
 
     def draw(self, context):
         from . import chat, panels
@@ -96,14 +130,20 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
 
         box = layout.box()
         box.label(text="3 · Blender MCP — lets Claude act on this scene", icon="LINKED")
-        if chat.state.mcp_listening:
-            box.label(text=f"MCP add-on listening on port {self.mcp_port}", icon="CHECKMARK")
-        else:
-            box.label(text=f"Nothing listens on port {self.mcp_port}: enable the Blender MCP add-on", icon="ERROR")
-            box.operator("freeplugin.open_url", text="Get the mcp-for-blender add-on",
-                         icon="URL").url = "https://pypi.org/project/mcp-for-blender/"
-        box.prop(self, "mcp_command")
-        box.prop(self, "mcp_port")
+        box.prop(self, "mcp_mode")
+        if self.mcp_mode != "OWN":
+            column = box.box().column()
+            if chat.state.mcp_listening:
+                column.label(text=f"mcp-for-blender: listening on port {self.mcp_port}", icon="CHECKMARK")
+            else:
+                column.label(text=f"Nothing listens on port {self.mcp_port}: enable the Blender MCP add-on",
+                             icon="ERROR")
+                column.operator("freeplugin.open_url", text="Get the mcp-for-blender add-on",
+                                icon="URL").url = "https://pypi.org/project/mcp-for-blender/"
+            column.prop(self, "mcp_command")
+            column.prop(self, "mcp_port")
+        column = box.box().column()
+        draw_own_mcp(column, self)
 
         box = layout.box()
         box.label(text="Display and files", icon="WINDOW")
@@ -122,6 +162,25 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         box = layout.box()
         box.label(text="Advanced", icon="TOOL_SETTINGS")
         box.prop(self, "claude_path")
+
+
+def draw_own_mcp(layout, settings):
+    from . import mcpserver
+
+    if mcpserver.state.server is not None:
+        layout.label(text=f"Free Plugin MCP: on, port {mcpserver.state.server.port} (this Blender only)",
+                     icon="CHECKMARK")
+    elif mcpserver.state.error:
+        layout.label(text=f"Free Plugin MCP: {mcpserver.state.error}", icon="ERROR")
+    else:
+        layout.label(text="Free Plugin MCP: off (used by the two other modes)", icon="DOT")
+    row = layout.row()
+    row.prop(settings, "own_mcp_port")
+    row.prop(settings, "own_mcp_terminal", text="Keep on for the terminal")
+    if mcpserver.state.server is not None:
+        row = layout.row(align=True)
+        row.operator("freeplugin.mcp_copy_command", icon="COPYDOWN")
+        row.operator("freeplugin.mcp_new_token", text="", icon="FILE_REFRESH")
 
 
 def get():

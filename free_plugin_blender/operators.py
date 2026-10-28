@@ -653,6 +653,37 @@ class FREEPLUGIN_OT_claude_install(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class FREEPLUGIN_OT_mcp_copy_command(bpy.types.Operator):
+    bl_idname = "freeplugin.mcp_copy_command"
+    bl_label = "Copy the terminal command"
+    bl_description = ("Copy the `claude mcp add` command that connects Claude Code in a terminal to this "
+                      "Blender's Free Plugin MCP server (set a fixed port first, so it keeps working)")
+
+    def execute(self, context):
+        from . import mcpserver
+
+        if mcpserver.state.server is None:
+            self.report({"ERROR"}, "The Free Plugin MCP server is off")
+            return {"CANCELLED"}
+        context.window_manager.clipboard = mcpserver.terminal_command()
+        self.report({"INFO"}, "Copied: paste it in a terminal")
+        return {"FINISHED"}
+
+
+class FREEPLUGIN_OT_mcp_new_token(bpy.types.Operator):
+    bl_idname = "freeplugin.mcp_new_token"
+    bl_label = "New token"
+    bl_description = "Replace the Free Plugin MCP token (terminals set up with the old one stop working)"
+
+    def execute(self, context):
+        from . import mcpserver
+
+        prefs.get().own_mcp_token = ""
+        mcpserver.stop()
+        mcpserver.sync()
+        return {"FINISHED"}
+
+
 class FREEPLUGIN_OT_open_url(bpy.types.Operator):
     bl_idname = "freeplugin.open_url"
     bl_label = "Open"
@@ -707,6 +738,8 @@ classes = (
     FREEPLUGIN_OT_claude_disconnect,
     FREEPLUGIN_OT_claude_refresh,
     FREEPLUGIN_OT_claude_install,
+    FREEPLUGIN_OT_mcp_copy_command,
+    FREEPLUGIN_OT_mcp_new_token,
     FREEPLUGIN_OT_open_url,
     FREEPLUGIN_OT_open_outputs,
     FREEPLUGIN_OT_clear_tasks,

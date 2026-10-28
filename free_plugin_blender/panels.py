@@ -91,6 +91,16 @@ def _status_header(layout, context):
     fal = bool(prefs.fal_key())
     column.label(text="fal.ai key: set" if fal else "fal.ai key: not set (Image, 3D, Video)",
                  icon="CHECKMARK" if fal else "DOT")
+    mode = prefs.get().mcp_mode
+    if mode != "EXTERNAL":
+        from . import mcpserver
+
+        if mcpserver.state.server is not None:
+            column.label(text="Free Plugin MCP: on", icon="CHECKMARK")
+        else:
+            column.label(text=f"Free Plugin MCP: {mcpserver.state.error or 'starting…'}", icon="ERROR")
+        if mode == "OWN":
+            return
     own = getattr(context.scene, "blendermcp_server_running", None)
     if chat.state.mcp_listening and own is False:
         column.label(text="Blender MCP: used by another Blender", icon="ERROR")
@@ -129,6 +139,8 @@ def _draw_chat(layout, context):
             box.label(text="…", icon="BLANK1")
     if not state.messages:
         column.label(text="Ask Claude to build or change the scene.", icon="INFO")
+    if state.usage:
+        column.label(text=state.usage, icon="INFO")
     if state.busy:
         row = layout.row()
         row.label(text=state.status or "Working…", icon="SORTTIME")

@@ -32,11 +32,15 @@ Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the
   retargeted onto the character's rig, and a free motion copy between two rigs.
 - Retexture through `fal-ai/meshy/retexture` (v0.8.0): no Meshy key needed any more.
 
-## Phase 3: our own local MCP server
+## Phase 3: our own local MCP server (v0.9.0)
 
-- Typed high-level tools (scene summary, primitives, materials, render, screenshot,
-  generation, Poly Haven, Python as a last resort), the idea behind Higgsfield's bridge
-  without the cloud relay. Removes the `mcp-for-blender` dependency and the shared port.
+- Built-in MCP server (`mcpserver/`, HTTP on 127.0.0.1, a port per Blender, token): compact
+  typed tools (scene summary, object info, primitives, edits, materials, screenshot, generation
+  that waits for its result, Poly Haven, animation presets, tasks, Python as a last resort).
+- Opt-in, `mcp-for-blender` stays the default: three modes (mcp-for-blender / both / built-in
+  only). Token usage shown under the chat to compare them.
+- Later: Sketchfab / Poly Pizza assets, a viewport `look` with annotations, if the modes show
+  they are missed.
 
 ## Phase 4: other providers with an API key
 
