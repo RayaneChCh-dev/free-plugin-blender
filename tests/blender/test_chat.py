@@ -38,7 +38,9 @@ def test():
     harness.enable()
     chat, account = harness.module(".chat"), harness.module(".account")
     prefs = bpy.context.preferences.addons[harness.MODULE].preferences
-    prefs.claude_path, prefs.chat_model, prefs.mcp_port = str(FAKE / "claude"), "HAIKU", 9877
+    harness.check("defaults: Opus 5.5, medium effort", prefs.chat_model == "claude-opus-5-5"
+                  and prefs.chat_effort == "medium", (prefs.chat_model, prefs.chat_effort))
+    prefs.claude_path, prefs.chat_model, prefs.mcp_port = str(FAKE / "claude"), "claude-haiku-5-5", 9877
     scene = bpy.context.scene
 
     # Account: signed out → sign-in with a code → signed in.
@@ -67,7 +69,8 @@ def test():
     harness.check("built-in tools off", argv[argv.index("--tools") + 1] == "")
     harness.check("only the Blender MCP allowed", argv[argv.index("--allowedTools") + 1] == "mcp__blender"
                   and "--strict-mcp-config" in argv)
-    harness.check("model passed", argv[argv.index("--model") + 1] == "haiku")
+    harness.check("exact model id passed", argv[argv.index("--model") + 1] == "claude-haiku-5-5")
+    harness.check("effort passed (default medium)", argv[argv.index("--effort") + 1] == "medium")
     mcp = json.loads(argv[argv.index("--mcp-config") + 1])["mcpServers"]["blender"]
     harness.check("MCP port passed to the server", mcp["env"]["BLENDER_PORT"] == "9877")
     prompt = argv[argv.index("--append-system-prompt") + 1]
@@ -76,10 +79,13 @@ def test():
     harness.check("instance id published", bpy.context.window_manager.get("free_plugin_instance") == chat.INSTANCE)
     harness.check("saved in the scene", len(json.loads(scene["free_plugin_chat"])["messages"]) == 6)
 
+    prefs.chat_model, prefs.chat_effort = "DEFAULT", "xhigh"
     chat.send("encore", scene)
     wait_chat(chat)
     argv = last_call()["argv"]
     harness.check("next turn resumes the session", argv[argv.index("--resume") + 1] == chat.state.session_id)
+    harness.check("Claude Code default: no --model", "--model" not in argv)
+    harness.check("effort change applies", argv[argv.index("--effort") + 1] == "xhigh")
 
     # Stop a running turn; a second message is refused meanwhile.
     chat.send("slow please", scene)

@@ -25,7 +25,7 @@ from pathlib import Path
 
 import bpy
 
-from . import catalog, prefs
+from . import catalog, claude_models, prefs
 
 MCP_SERVER = "blender"
 _MAX_MESSAGES = 200
@@ -167,9 +167,8 @@ def send(text: str, scene, note: str = "") -> str | None:
     ]
     if state.session_id:
         command += ["--resume", state.session_id]
-    model = prefs.get().chat_model
-    if model != "DEFAULT":
-        command += ["--model", model.lower()]
+    settings = prefs.get()
+    command += claude_models.cli_arguments(settings.chat_model, settings.chat_effort)
     prompt = f"{text}\n\n{note}" if note else text
     threading.Thread(target=_run, args=(command, prompt), name="free-plugin:chat", daemon=True).start()
     return None
