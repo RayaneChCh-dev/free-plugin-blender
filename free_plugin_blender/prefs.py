@@ -92,7 +92,7 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
         row = box.row(align=True)
         row.prop(self, "meshy_key")
         row.operator("freeplugin.open_url", text="", icon="URL").url = "https://www.meshy.ai/settings/api"
-        box.label(text="Meshy is only needed for Retexture.", icon="INFO")
+        box.label(text="Optional: use your Meshy credits instead of fal.ai.", icon="INFO")
 
         box = layout.box()
         box.label(text="3 · Blender MCP — lets Claude act on this scene", icon="LINKED")

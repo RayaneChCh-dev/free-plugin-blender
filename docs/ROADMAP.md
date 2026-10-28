@@ -30,7 +30,7 @@ Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the
 - Animation tab (v0.7.0): 678 Meshy presets (rigging + animation library on fal.ai,
   the rig is redone per preset), free text → motion (`fal-ai/hunyuan-motion`)
   retargeted onto the character's rig, and a free motion copy between two rigs.
-- Next: retexture through `fal-ai/meshy/retexture`, so it no longer needs a Meshy key.
+- Retexture through `fal-ai/meshy/retexture` (v0.8.0): no Meshy key needed any more.
 
 ## Phase 3: our own local MCP server
 

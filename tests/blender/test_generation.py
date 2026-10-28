@@ -80,6 +80,23 @@ def test():
     harness.check("rig sends the mesh", last_call()[0] == "fal-ai/meshy/rigging"
                   and last_call()[1]["model_url"].startswith("data:"))
 
+    # Retexture through fal.ai (no Meshy key), on a fresh mesh.
+    bpy.ops.mesh.primitive_monkey_add()
+    monkey = bpy.context.active_object
+    props.retexture_provider, props.retexture_prompt, props.retexture_resolution = "FAL", "rusty iron", "4k"
+    count = len(bpy.data.objects)
+    bpy.ops.freeplugin.retexture()
+    done = harness.wait()
+    model, body = last_call()
+    harness.check("retexture on fal.ai", model == "fal-ai/meshy/retexture" and body["model_url"].startswith("data:")
+                  and body["text_style_prompt"] == "rusty iron" and body["texture_resolution"] == "4k"
+                  and body["enable_pbr"] is True, body)
+    harness.check("retextured model imported", done and done[0].state == "done" and len(bpy.data.objects) > count,
+                  done and done[0].detail)
+    harness.check("retextured model tagged", any(o.get("fal_model") == "fal-ai/meshy/retexture"
+                                                 for o in bpy.data.objects))
+    bpy.data.objects.remove(monkey)
+
     # Unknown key: a clear task error, no crash.
     os.environ["FAL_KEY"] = ""
     bpy.ops.freeplugin.generate_image(prompt="no key")

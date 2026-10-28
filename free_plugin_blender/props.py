@@ -92,6 +92,17 @@ class FreePluginProps(bpy.types.PropertyGroup):
     mesh_texture: bpy.props.BoolProperty(name="Texture", default=True, description="Meshy only")
     mesh_pbr: bpy.props.BoolProperty(name="PBR maps", default=True, description="Meshy only")
     retexture_prompt: bpy.props.StringProperty(name="Style")
+    retexture_provider: bpy.props.EnumProperty(
+        name="Retexture with",
+        items=[("FAL", "Meshy retexture on fal.ai", "Pay per use, with your fal.ai key"),
+               ("MESHY", "Meshy (own key, credits)", "")],
+    )
+    retexture_pbr: bpy.props.BoolProperty(name="PBR maps", default=True,
+                                          description="Metallic, roughness and normal maps too")
+    retexture_resolution: bpy.props.EnumProperty(
+        name="Resolution", items=[("2k", "2K", ""), ("4k", "4K", ""), ("8k", "8K", "")], default="2k",
+        description="Base color resolution (fal.ai)",
+    )
     rig_provider: bpy.props.EnumProperty(
         name="Rig with",
         items=[("FAL", "Meshy rig on fal.ai ≈ $0.20", "Pay per use"),

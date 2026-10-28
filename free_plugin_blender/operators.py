@@ -328,24 +328,36 @@ class _MeshyOnActive(_Generate):
 
 class FREEPLUGIN_OT_retexture(_MeshyOnActive):
     bl_idname = "freeplugin.retexture"
-    bl_label = "Retexture with Meshy"
-    bl_description = "Re-paint the active model from a text style with Meshy, imported as a new object"
+    bl_label = "Retexture"
+    bl_description = ("Re-paint the active model from a text style with Meshy (on fal.ai or with your own key), "
+                      "imported as a new object")
 
     def execute(self, context):
-        prompt = self.resolve_prompt(context.scene.free_plugin.retexture_prompt)
+        props = context.scene.free_plugin
+        prompt = self.resolve_prompt(props.retexture_prompt)
         if not prompt:
             return {"CANCELLED"}
-        task_id, glb = self.model_source(context)
-        key = prefs.meshy_key()
+        on_fal = props.retexture_provider == "FAL"
+        # fal.ai cannot see our Meshy tasks, so it always gets the mesh itself.
+        task_id, glb = (None, self.export_active(context)) if on_fal else self.model_source(context)
+        fal_key, meshy_key, pbr = prefs.fal_key(), prefs.meshy_key(), props.retexture_pbr
+        resolution = props.retexture_resolution
         out = prefs.output_dir("models") / _stamp(prompt, "glb")
 
         def work(task):
             uri = net.data_uri(glb, "application/octet-stream") if glb else None
-            result = meshy.retexture(key, prompt, input_task_id=task_id, model_uri=uri, progress=task.set)
-            return result["id"], net.download(meshy.glb_url(result), out)
+            if on_fal:
+                payload = {"model_url": uri, "text_style_prompt": prompt, "enable_pbr": pbr,
+                           "texture_resolution": resolution}
+                result = fal.run(fal.RETEXTURE_MODEL, payload, fal_key, task.set)
+                task.set("downloading…")
+                return {"fal_model": fal.RETEXTURE_MODEL}, net.download(fal.result_url(result, "mesh"), out)
+            result = meshy.retexture(meshy_key, prompt, input_task_id=task_id, model_uri=uri, pbr=pbr,
+                                     progress=task.set)
+            return {"meshy_task_id": result["id"]}, net.download(meshy.glb_url(result), out)
 
         def done(task, value):
-            return scene.import_glb(value[1], {"meshy_task_id": value[0]})
+            return scene.import_glb(value[1], value[0])
 
         tasks.run(f"Retexture: {prompt[:40]}", work, done)
         return {"FINISHED"}
