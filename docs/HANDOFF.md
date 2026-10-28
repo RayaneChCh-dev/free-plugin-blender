@@ -50,7 +50,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (PR #5) | publiée |
 | 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif (PR #6) | publiée |
 | 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés (PR #7) | publiée |
-| 0.10.0 | Phase 4 : chat avec une clé OpenAI, boucle d'agent dans le plugin | PR `feat/openai-agent` |
+| 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR `feat/gemini-chat`, puis DeepSeek, OpenRouter/Ollama) | en cours : **version publiée à la fin de la phase** (décision de l'utilisateur, pas de tag par PR) |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
@@ -95,10 +95,12 @@ serveur est une option avancée pour économiser des tokens. Préférence `mcp_m
 - Pas encore mesuré : l'écart de tokens réel entre les modes (le plugin l'affiche
   sous le chat : *Last answer*).
 
-### Phase 4 : fournisseurs à clé API (v0.10.0 = OpenAI, branche `feat/openai-agent`)
+### Phase 4 : fournisseurs à clé API (v0.10.0, publiée à la fin de la phase)
 
-- Préférence `chat_provider` : `CLAUDE` (défaut, Claude Code) / `OPENAI`. Clé
-  `openai_key` (ou `OPENAI_API_KEY`), modèle `openai_model` (vide : le plus récent).
+- Préférence `chat_provider` : `CLAUDE` (défaut, Claude Code) / `OPENAI` / `GEMINI`. Par
+  fournisseur : `<nom>_key` et `<nom>_model` dans les préférences (vide : le plus récent),
+  variables d'env dans `PROVIDERS[...]["key_env"]`. Ajouter un fournisseur = une entrée
+  `PROVIDERS` + un item `CHAT_PROVIDERS` + les deux propriétés.
 - `providers/openai_compat.py` (sans bpy) : Chat Completions + tools, `GET /models`
   filtré (`chat_models`, tri par version), `reasoning_effort` retiré si le modèle le
   refuse. Un seul adaptateur pour la suite : Gemini (endpoint compatible OpenAI),
@@ -113,7 +115,8 @@ serveur est une option avancée pour économiser des tokens. Préférence `mcp_m
 
 ### Ensuite (roadmap)
 
-- Gemini, DeepSeek, puis OpenRouter / Ollama : une PR par fournisseur.
+- Gemini fait (thought signatures : `extra_content` gardé). Reste DeepSeek, puis
+  OpenRouter / Ollama : une PR par fournisseur, puis release de la phase.
 - Sketchfab / Poly Pizza et un `look` annoté dans nos outils, si le mode OWN montre
   qu'ils manquent.
 
@@ -148,7 +151,7 @@ toute modification de `data/models.json`.
 
 ```bash
 uvx ruff@0.14.0 check .
-python3 -m pytest -q                                                   # 96 passent
+python3 -m pytest -q                                                   # 98 passent
 python3 scripts/run_blender_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender
 python3 scripts/run_gui_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender   # fenêtre, pas en CI
 ```

@@ -236,21 +236,26 @@ port. Chaque Blender a donc un identifiant que Claude vérifie avant de modifier
 quoi que ce soit. Pour en piloter plusieurs, donne à chacun son propre port
 (add-on MCP et préférence *MCP add-on port*).
 
-### Chatter avec une clé API (OpenAI)
+### Chatter avec une clé API (OpenAI, Gemini)
 
 Dans *Preferences → 1 · Chat*, *Chat with* : **Claude (subscription)** (défaut,
-via Claude Code) ou **OpenAI (API key)**. Avec OpenAI :
+via Claude Code), **OpenAI (API key)** ou **Gemini (API key)**. Avec une clé :
 
-- colle ta clé (*Get a key* ouvre <https://platform.openai.com/api-keys>), ou
-  la variable `OPENAI_API_KEY` ;
-- la **liste des modèles est lue en direct** chez OpenAI (le plus récent est choisi
-  par défaut) : menu de modèle dans la barre et la sidebar, *Refresh the model list* ;
+- colle ta clé (*Get a key* ouvre la page du fournisseur), ou la variable
+  d'environnement : `OPENAI_API_KEY` ; `GEMINI_API_KEY` ou `GOOGLE_API_KEY`.
+  Une clé Gemini se crée gratuitement sur <https://aistudio.google.com/apikey>
+  (avec un quota gratuit limité) ;
+- la **liste des modèles est lue en direct** chez le fournisseur (le plus récent est
+  choisi par défaut, chaque fournisseur garde son choix) : menu de modèle dans la
+  barre et la sidebar, *Refresh the model list* ;
 - l'effort (Low… Max) devient le `reasoning_effort` du modèle ; un modèle qui ne
   raisonne pas est appelé sans ;
 - la boucle d'agent tourne dans le plugin, avec les **outils Free Plugin intégrés**
   (les mêmes que le serveur MCP) : Claude Code et `mcp-for-blender` ne servent pas ;
-- chaque requête est payée sur ton compte OpenAI ; *Last answer* montre les tokens
-  du tour entier (toutes les étapes).
+- chaque requête est payée sur ton compte du fournisseur ; *Last answer* montre les
+  tokens du tour entier (toutes les étapes).
+- Gemini passe par son endpoint compatible OpenAI ; les « thought signatures » de
+  Gemini 3 sont renvoyées avec l'historique, comme il l'exige pour les outils.
 
 ## Piloter depuis Claude Code (terminal)
 

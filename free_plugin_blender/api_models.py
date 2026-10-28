@@ -7,7 +7,7 @@ import json
 from . import prefs, tasks
 from .providers import openai_compat
 
-PROVIDER_OF = {"OPENAI": "openai"}  # chat_provider → openai_compat.PROVIDERS key
+PROVIDER_OF = {key.upper(): key for key in openai_compat.PROVIDERS}  # chat_provider → PROVIDERS key
 _cache: dict[str, list[str]] = {}
 
 
@@ -34,8 +34,13 @@ def models(provider=None) -> list[str]:
 
 def current(provider=None) -> str:
     provider = provider or prefs.get().chat_provider
-    chosen = prefs.get().openai_model.strip() if provider == "OPENAI" else ""
+    chosen = getattr(prefs.get(), f"{provider.lower()}_model", "").strip()
     return chosen or openai_compat.default_model(models(provider))
+
+
+def choose(model_id, provider=None):
+    provider = provider or prefs.get().chat_provider
+    setattr(prefs.get(), f"{provider.lower()}_model", model_id)
 
 
 def refreshing() -> bool:

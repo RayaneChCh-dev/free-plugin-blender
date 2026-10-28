@@ -99,7 +99,7 @@ def draw_api_account(layout, settings):
     """Key, model and effort of the API-key chat."""
     info = api_models.preset()
     row = layout.row(align=True)
-    row.prop(settings, "openai_key")
+    row.prop(settings, f"{settings.chat_provider.lower()}_key")
     row.operator("freeplugin.open_url", text="Get a key", icon="URL").url = info["keys_url"]
     if not prefs.api_key():
         layout.label(text=f"Pay per use on your {info['label']} account. No Claude Code needed.", icon="INFO")

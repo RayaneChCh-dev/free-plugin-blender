@@ -790,7 +790,7 @@ class FREEPLUGIN_OT_overlay_set(bpy.types.Operator):
         elif self.target == "chat_effort":
             prefs.get().chat_effort = self.value
         elif self.target == "api_model":
-            prefs.get().openai_model = self.value
+            api_models.choose(self.value)
         elif self.target == "duration":
             props.motion_duration = float(self.value)
         elif self.target == "kind":

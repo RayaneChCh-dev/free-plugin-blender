@@ -1,7 +1,8 @@
-"""OpenAI-compatible Chat Completions with tools: OpenAI first, the same format serves others. No bpy.
+"""OpenAI-compatible Chat Completions with tools, for every API-key provider. No bpy.
 
 Docs: https://platform.openai.com/docs/api-reference/chat — `POST {base}/chat/completions`
-with `tools`, and `GET {base}/models` for the live model list.
+with `tools`, and `GET {base}/models` for the live model list. Gemini speaks the same
+format on its compatible endpoint: https://ai.google.dev/gemini-api/docs/openai
 """
 
 from __future__ import annotations
@@ -10,15 +11,19 @@ import re
 
 from ..net import ApiError, request_json
 
+# key_env: environment variables tried in order; chat: ids kept from the live list;
+# skip: ids dropped on top of the common ones (no tool calling, not a chat model…).
 PROVIDERS = {
-    "openai": {"label": "OpenAI", "base_url": "https://api.openai.com/v1", "key_env": "OPENAI_API_KEY",
-               "keys_url": "https://platform.openai.com/api-keys"},
+    "openai": {"label": "OpenAI", "base_url": "https://api.openai.com/v1", "key_env": ("OPENAI_API_KEY",),
+               "keys_url": "https://platform.openai.com/api-keys", "chat": r"^(gpt-|o\d|chatgpt-)", "skip": ""},
+    "gemini": {"label": "Gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+               "key_env": ("GEMINI_API_KEY", "GOOGLE_API_KEY"), "keys_url": "https://aistudio.google.com/apikey",
+               "chat": r"^gemini-", "skip": r"(gemma|imagen|veo|aqa|live|native-audio|robotics|learnlm)"},
 }
 
 # Models a chat cannot use: embeddings, speech, images, moderation, legacy completions…
 _NOT_CHAT = re.compile(r"(embed|tts|whisper|transcri|audio|realtime|image|dall-e|moderation|search|"
                        r"davinci|babbage|instruct|computer-use|sora)", re.I)
-_CHAT = re.compile(r"^(gpt-|o\d|chatgpt-)", re.I)
 
 # Our effort levels → reasoning_effort. Models that do not reason refuse it (retried without).
 EFFORT = {"low": "low", "medium": "medium", "high": "high", "xhigh": "high", "max": "high"}
@@ -31,8 +36,11 @@ def _headers(key):
 
 
 def chat_models(ids, provider="openai"):
-    """The ids a chat can use, newest-looking first."""
-    keep = [i for i in ids if not _NOT_CHAT.search(i) and (provider != "openai" or _CHAT.match(i))]
+    """The ids a chat can use, newest-looking first ("models/" prefixes, as Gemini lists them, removed)."""
+    info = PROVIDERS[provider]
+    ids = [i.removeprefix("models/") for i in ids]
+    keep = [i for i in ids if not _NOT_CHAT.search(i) and re.match(info["chat"], i, re.I)
+            and not (info["skip"] and re.search(info["skip"], i, re.I))]
     return sorted(set(keep), key=_rank)
 
 
@@ -70,7 +78,7 @@ def complete(base_url, key, model, messages, tools=(), effort="medium", timeout=
     try:
         data = request_json("POST", url, headers=_headers(key), body=body, timeout=timeout)
     except ApiError as error:
-        if "reasoning_effort" not in body or "reasoning" not in str(error).lower():
+        if "reasoning_effort" not in body or not re.search(r"reasoning|thinking", str(error), re.I):
             raise
         body.pop("reasoning_effort")  # a model that does not reason
         data = request_json("POST", url, headers=_headers(key), body=body, timeout=timeout)
@@ -78,7 +86,9 @@ def complete(base_url, key, model, messages, tools=(), effort="medium", timeout=
     if not choices:
         raise ApiError(f"No answer from {model}: {str(data)[:300]}")
     message = choices[0].get("message") or {}
-    message = {k: v for k, v in message.items() if k in ("role", "content", "tool_calls") and v is not None}
+    # extra_content carries Gemini's thought signatures: they must go back with the history.
+    message = {k: v for k, v in message.items()
+               if k in ("role", "content", "tool_calls", "extra_content") and v is not None}
     message.setdefault("role", "assistant")
     return message, data.get("usage") or {}
 
