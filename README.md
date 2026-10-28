@@ -236,13 +236,14 @@ port. Chaque Blender a donc un identifiant que Claude vérifie avant de modifier
 quoi que ce soit. Pour en piloter plusieurs, donne à chacun son propre port
 (add-on MCP et préférence *MCP add-on port*).
 
-### Chatter avec une clé API (OpenAI, Gemini)
+### Chatter avec une clé API (OpenAI, Gemini, DeepSeek)
 
 Dans *Preferences → 1 · Chat*, *Chat with* : **Claude (subscription)** (défaut,
-via Claude Code), **OpenAI (API key)** ou **Gemini (API key)**. Avec une clé :
+via Claude Code), **OpenAI**, **Gemini** ou **DeepSeek** (API key). Avec une clé :
 
 - colle ta clé (*Get a key* ouvre la page du fournisseur), ou la variable
-  d'environnement : `OPENAI_API_KEY` ; `GEMINI_API_KEY` ou `GOOGLE_API_KEY`.
+  d'environnement : `OPENAI_API_KEY` ; `GEMINI_API_KEY` ou `GOOGLE_API_KEY` ;
+  `DEEPSEEK_API_KEY`.
   Une clé Gemini se crée gratuitement sur <https://aistudio.google.com/apikey>
   (avec un quota gratuit limité) ;
 - la **liste des modèles est lue en direct** chez le fournisseur (le plus récent est
@@ -256,6 +257,12 @@ via Claude Code), **OpenAI (API key)** ou **Gemini (API key)**. Avec une clé :
   tokens du tour entier (toutes les étapes).
 - Gemini passe par son endpoint compatible OpenAI ; les « thought signatures » de
   Gemini 3 sont renvoyées avec l'historique, comme il l'exige pour les outils.
+- DeepSeek : son raisonnement (`reasoning_content`) est renvoyé avec l'historique,
+  comme il l'exige ; l'effort devient Low / High / Max ; il ne lit pas les images,
+  donc l'outil de capture ne lui est pas proposé. Si sa liste de modèles n'est pas
+  disponible, `deepseek-flash` et `deepseek-v4-pro` sont proposés.
+- Changer de fournisseur au milieu d'une conversation repart d'un contexte neuf
+  (la conversation affichée reste) : chaque fournisseur a ses propres champs.
 
 ## Piloter depuis Claude Code (terminal)
 

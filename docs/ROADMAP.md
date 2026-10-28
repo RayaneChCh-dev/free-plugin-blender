@@ -48,5 +48,6 @@ Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the
   OpenAI-compatible Chat Completions adapter (`providers/openai_compat.py`).
 - **OpenAI** (live model list, `reasoning_effort` from the effort, token usage).
 - **Gemini** on its OpenAI-compatible endpoint (thought signatures kept in the history).
-- Next, presets of the same adapter: DeepSeek, then OpenRouter and a local server (Ollama).
+- **DeepSeek** (reasoning_content sent back, its effort scale, text only, fallback model list).
+- Next, presets of the same adapter: OpenRouter and a local server (Ollama).
 - Released as one version when the phase is done.

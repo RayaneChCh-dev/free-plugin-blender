@@ -53,6 +53,7 @@ class _State:
         self.usage = ""  # tokens of the last answer
         self.session_tokens = 0
         self.api_history: list[dict] = []  # OpenAI-format messages of the API-key chat
+        self.api_provider = ""  # whose format api_history is in
         self.stop_requested = False
 
 
@@ -252,16 +253,23 @@ def _send_api(text, scene, note):
     if not model:
         api_models.refresh(provider)
         return "The model list is loading: try again in a moment"
+    name = api_models.PROVIDER_OF[provider]
+    if state.api_history and state.api_provider != provider:
+        # Each provider has its own extra fields (thought signatures, reasoning): start its context afresh.
+        state.api_history = []
+        _add("info", f"{info['label']} starts with a fresh context (it cannot read the other model's turns).")
+    state.api_provider = provider
     state.scene_name = scene.name
     _add("user", text)
     state.busy, state.status, state.stop_requested = True, f"{model} is thinking…", False
     mcpserver.acquire()
-    tools = openai_compat.tool_specs(mcpserver.tool_list())
+    sees = openai_compat.sees_images(name)
+    tools = openai_compat.tool_specs([t for t in mcpserver.tool_list() if sees or t.name != "screenshot"])
     system = [{"role": "system", "content": api_system_prompt()}]
     effort, counts = prefs.get().chat_effort, [0, 0, 0]
 
     def complete(history):
-        return openai_compat.complete(info["base_url"], key, model, system + history, tools, effort)
+        return openai_compat.complete(info["base_url"], key, model, system + history, tools, effort, provider=name)
 
     def on_event(role, value):
         if role == "usage":
@@ -275,7 +283,7 @@ def _send_api(text, scene, note):
         try:
             agent.run_turn(state.api_history, f"{text}\n\n{note}" if note else text, complete=complete,
                            call_tool=mcpserver.call_blocks, on_event=on_event,
-                           should_stop=lambda: state.stop_requested)
+                           should_stop=lambda: state.stop_requested, images=sees)
         except ApiError as error:
             _add("error", str(error)[:600])
         except Exception as error:  # noqa: BLE001 - shown in the chat
@@ -419,6 +427,7 @@ def _load(scene):
     state.messages = data.get("messages", [])
     state.session_id = data.get("session_id", "")
     state.api_history = data.get("api_history", [])
+    state.api_provider = data.get("api_provider", "")
     state.scene_name = scene.name
 
 
@@ -431,7 +440,8 @@ def _tick():
         scene = bpy.data.scenes.get(state.scene_name) or bpy.context.scene
         if scene is not None:
             scene["free_plugin_chat"] = json.dumps({"session_id": state.session_id, "messages": state.messages,
-                                                     "api_history": agent.strip_images(state.api_history)})
+                                                     "api_history": agent.strip_images(state.api_history),
+                                                     "api_provider": state.api_provider})
         state.dirty = False
         for window in wm.windows if wm else ():
             for area in window.screen.areas:

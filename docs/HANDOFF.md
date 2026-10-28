@@ -50,7 +50,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (PR #5) | publiée |
 | 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif (PR #6) | publiée |
 | 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés (PR #7) | publiée |
-| 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR `feat/gemini-chat`, puis DeepSeek, OpenRouter/Ollama) | en cours : **version publiée à la fin de la phase** (décision de l'utilisateur, pas de tag par PR) |
+| 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR #9, DeepSeek PR `feat/deepseek-chat`, puis OpenRouter/Ollama) | en cours : **version publiée à la fin de la phase** (décision de l'utilisateur, pas de tag par PR) |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
@@ -97,7 +97,7 @@ serveur est une option avancée pour économiser des tokens. Préférence `mcp_m
 
 ### Phase 4 : fournisseurs à clé API (v0.10.0, publiée à la fin de la phase)
 
-- Préférence `chat_provider` : `CLAUDE` (défaut, Claude Code) / `OPENAI` / `GEMINI`. Par
+- Préférence `chat_provider` : `CLAUDE` (défaut, Claude Code) / `OPENAI` / `GEMINI` / `DEEPSEEK`. Par
   fournisseur : `<nom>_key` et `<nom>_model` dans les préférences (vide : le plus récent),
   variables d'env dans `PROVIDERS[...]["key_env"]`. Ajouter un fournisseur = une entrée
   `PROVIDERS` + un item `CHAT_PROVIDERS` + les deux propriétés.
@@ -115,8 +115,10 @@ serveur est une option avancée pour économiser des tokens. Préférence `mcp_m
 
 ### Ensuite (roadmap)
 
-- Gemini fait (thought signatures : `extra_content` gardé). Reste DeepSeek, puis
-  OpenRouter / Ollama : une PR par fournisseur, puis release de la phase.
+- Gemini fait (thought signatures : `extra_content` gardé). DeepSeek fait
+  (`reasoning_content` gardé, `effort` propre, `images: False`, liste `fallback`).
+  Changer de fournisseur remet `api_history` à zéro (`api_provider`).
+  Reste OpenRouter / Ollama, puis release de la phase (v0.10.0).
 - Sketchfab / Poly Pizza et un `look` annoté dans nos outils, si le mode OWN montre
   qu'ils manquent.
 
@@ -151,7 +153,7 @@ toute modification de `data/models.json`.
 
 ```bash
 uvx ruff@0.14.0 check .
-python3 -m pytest -q                                                   # 98 passent
+python3 -m pytest -q                                                   # 100 passent
 python3 scripts/run_blender_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender
 python3 scripts/run_gui_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender   # fenêtre, pas en CI
 ```

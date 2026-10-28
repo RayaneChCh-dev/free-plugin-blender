@@ -160,6 +160,41 @@ def test():
                   echoed[0]["tool_calls"][0]["extra_content"]["google"]["thought_signature"] == "SIG")
     harness.check("Gemini: answer shown", chat.state.messages[-1]["text"] == "Trois objets.")
     os.environ.pop("GEMINI_API_KEY")
+
+    # DeepSeek: its reasoning goes back with the history, no screenshot tool, its effort scale.
+    def fake_deepseek(method, url, headers=None, body=None, timeout=60):
+        requests.append((method, url, headers, json.loads(json.dumps(body)) if body else None))
+        if url.endswith("/models"):
+            raise oc.ApiError("HTTP 404 on https://api.deepseek.com/models: not found")
+        return {"choices": [{"message": script.pop(0) if script else {"role": "assistant", "content": "Ok."}}]}
+
+    oc.request_json = fake_deepseek
+    prefs.chat_provider, prefs.deepseek_key = "DEEPSEEK", "ds-test"
+    harness.wait()
+    harness.check("DeepSeek: fallback model list", api_models.models() == ["deepseek-flash", "deepseek-v4-pro"],
+                  api_models.models())
+    script[:] = [{"role": "assistant", "reasoning_content": "Je dois lire la scène.",
+                  "tool_calls": [call("d1", "scene_summary")]},
+                 {"role": "assistant", "content": "Trois objets.", "reasoning_content": "Compté."}]
+    requests.clear()
+    chat.send("combien ?", scene)
+    wait_chat(chat, mcp, tasks)
+    posts = [r for r in requests if r[0] == "POST"]
+    harness.check("DeepSeek: fresh context after Gemini", any(
+        m["role"] == "info" and "fresh context" in m["text"] for m in chat.state.messages)
+        and len(posts[0][3]["messages"]) == 2, len(posts[0][3]["messages"]))
+    harness.check("DeepSeek: endpoint, effort medium → high", posts[0][1] == "https://api.deepseek.com/chat/completions"
+                  and posts[0][3]["reasoning_effort"] == "high")
+    offered = {t["function"]["name"] for t in posts[0][3]["tools"]}
+    harness.check("DeepSeek: no screenshot tool", "screenshot" not in offered and "scene_summary" in offered)
+    echoed = [m for m in posts[-1][3]["messages"] if m["role"] == "assistant"]
+    harness.check("DeepSeek: reasoning sent back", echoed
+                  and echoed[0]["reasoning_content"] == "Je dois lire la scène.")
+    chat.send("et maintenant ?", scene)
+    wait_chat(chat, mcp, tasks)
+    later = [m for m in [r for r in requests if r[0] == "POST"][-1][3]["messages"] if m["role"] == "assistant"]
+    harness.check("DeepSeek: reasoning of earlier turns kept", [m.get("reasoning_content") for m in later][:2]
+                  == ["Je dois lire la scène.", "Compté."])
     os.environ.pop("OPENAI_API_KEY", None)
     prefs.chat_provider = "CLAUDE"
 

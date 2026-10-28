@@ -21,8 +21,9 @@ def _summary(name, arguments):
     return f"{name}: {detail}" if detail else name
 
 
-def run_turn(history, text, *, complete, call_tool, on_event, should_stop=lambda: False, max_steps=MAX_STEPS):
-    """Run one user turn. `history` (OpenAI-format messages) is extended in place.
+def run_turn(history, text, *, complete, call_tool, on_event, should_stop=lambda: False, max_steps=MAX_STEPS,
+             images=True):
+    """Run one user turn. `history` (OpenAI-format messages) is extended in place. images=False: text-only model.
 
     complete(history) → (assistant message, usage); call_tool(name, arguments) → (content blocks, is_error);
     on_event(role, text) shows progress ("assistant", "tool", "error", "info", "usage").
@@ -40,7 +41,7 @@ def run_turn(history, text, *, complete, call_tool, on_event, should_stop=lambda
         calls = message.get("tool_calls") or []
         if not calls:
             return
-        images = []
+        found = []
         for call in calls:
             function = call.get("function") or {}
             name = function.get("name", "")
@@ -54,16 +55,19 @@ def run_turn(history, text, *, complete, call_tool, on_event, should_stop=lambda
                 on_event("tool", _summary(name, arguments))
                 blocks, failed = call_tool(name, arguments)
             texts = [b["text"] for b in blocks if b.get("type") == "text"]
-            images += [b for b in blocks if b.get("type") == "image"]
+            pictures = [b for b in blocks if b.get("type") == "image"]
+            found += pictures
+            if pictures and not images:
+                texts.append("(image not shown: this model does not take images)")
             if failed:
                 on_event("tool", f"failed: {' '.join(texts)[:200]}")
             history.append({"role": "tool", "tool_call_id": call.get("id", ""),
-                            "content": "\n".join(texts) or ("image below" if images else "ok")})
+                            "content": "\n".join(texts) or ("image below" if pictures else "ok")})
         # Every tool call got its answer above (the API requires it); a stop is honoured next step.
-        if images:
+        if found and images:
             history.append({"role": "user", "content": [{"type": "text", "text": "Image returned by the tool:"}] + [
                 {"type": "image_url", "image_url": {"url": f"data:{b['mimeType']};base64,{b['data']}"}}
-                for b in images]})
+                for b in found]})
     on_event("error", f"Stopped after {max_steps} steps without a final answer")
 
 

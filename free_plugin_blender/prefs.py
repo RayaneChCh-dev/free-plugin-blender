@@ -22,6 +22,7 @@ CHAT_PROVIDERS = (
     ("CLAUDE", "Claude (subscription)", "Claude Code with your Claude Pro/Max plan, no API key"),
     ("OPENAI", "OpenAI (API key)", "Pay per use with your OpenAI key; Claude Code is not needed"),
     ("GEMINI", "Gemini (API key)", "Pay per use (or the free tier) with your Google AI Studio key"),
+    ("DEEPSEEK", "DeepSeek (API key)", "Pay per use with your DeepSeek key (text only: no screenshots)"),
 )
 
 
@@ -97,6 +98,13 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
     )
     gemini_model: bpy.props.StringProperty(
         name="Gemini model", description="Model id; empty: the newest from the live list",
+    )
+    deepseek_key: bpy.props.StringProperty(
+        name="DeepSeek key", subtype="PASSWORD", update=_api_changed,
+        description="From https://platform.deepseek.com/api_keys (env var DEEPSEEK_API_KEY also works)",
+    )
+    deepseek_model: bpy.props.StringProperty(
+        name="DeepSeek model", description="Model id; empty: the newest from the live list",
     )
     chat_model: bpy.props.EnumProperty(
         name="Claude model",
