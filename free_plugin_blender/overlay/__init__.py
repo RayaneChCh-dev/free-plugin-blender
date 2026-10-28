@@ -387,11 +387,21 @@ def _thread_layout(content_w, s):
 
 
 def _clip(x, y, w, h):
-    """Scissor to (x, y, w, h) in region pixels; returns the previous box to restore."""
+    """Clip drawing to (x, y, w, h) in region pixels; returns the previous box for `_unclip`.
+
+    The scissor box is in window pixels, so it is offset by the region's viewport, and
+    the scissor test must be switched on: a box alone clips nothing.
+    """
     previous = gpu.state.scissor_get()
-    ox, oy = previous[0], previous[1]
+    ox, oy = gpu.state.viewport_get()[:2]
     gpu.state.scissor_set(int(ox + x), int(oy + y), max(0, int(w)), max(0, int(h)))
+    gpu.state.scissor_test_set(True)
     return previous
+
+
+def _unclip(previous):
+    gpu.state.scissor_set(*previous)
+    gpu.state.scissor_test_set(False)
 
 
 def _draw_thread(rects, x, y, content_w, height, s, layout):
@@ -420,7 +430,7 @@ def _draw_thread(rects, x, y, content_w, height, s, layout):
                            working=chat.state.busy and index == 0 and item.kind == "tools")
             cursor = top + gap
     finally:
-        gpu.state.scissor_set(*previous)
+        _unclip(previous)
     # Items scrolled partly out of view only take clicks where they are visible.
     kept = []
     for hit_id, hx, hy, hw, hh in rects[first_rect:]:
