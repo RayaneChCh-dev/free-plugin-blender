@@ -98,3 +98,35 @@ def test_failed_tool_is_shown():
                    call_tool=lambda n, a: ([{"type": "text", "text": "No object named 'Nope'"}], True),
                    on_event=lambda role, text: events.append((role, text)))
     assert ("tool", "object_info: Nope") in events and ("tool", "failed: No object named 'Nope'") in events
+
+
+def test_gemini_models():
+    ids = ["models/gemini-2.5-pro", "models/gemini-2.5-flash", "models/gemini-2.5-flash-lite",
+           "models/gemini-3-pro-preview", "models/gemini-embedding-001", "models/imagen-4.0-generate-001",
+           "models/gemma-3-27b-it", "models/gemini-2.5-flash-image", "models/gemini-live-2.5-flash-preview",
+           "models/veo-3.0-generate-001", "models/gemini-2.5-flash-preview-tts", "models/aqa"]
+    models = oc.chat_models(ids, "gemini")
+    assert models[0] == "gemini-3-pro-preview"
+    assert set(models) == {"gemini-3-pro-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"}
+    assert models.index("gemini-2.5-flash") < models.index("gemini-2.5-flash-lite")
+    assert oc.chat_models(["gpt-5"], "gemini") == [] and oc.chat_models(["gemini-2.5-pro"], "openai") == []
+
+
+def test_gemini_thought_signatures_kept_and_thinking_retry(monkeypatch):
+    sent = []
+
+    def fake(method, url, headers=None, body=None, timeout=60):
+        sent.append(dict(body))
+        if "reasoning_effort" in body:
+            raise ApiError("HTTP 400: Thinking is not supported for this model.")
+        call = {"id": "f1", "type": "function", "function": {"name": "scene_summary", "arguments": "{}"},
+                "extra_content": {"google": {"thought_signature": "SIG"}}}
+        return {"choices": [{"message": {"role": "assistant", "tool_calls": [call],
+                                         "extra_content": {"google": {"thought_signature": "MSG"}}}}]}
+
+    monkeypatch.setattr(oc, "request_json", fake)
+    base = oc.PROVIDERS["gemini"]["base_url"]
+    message, _usage = oc.complete(base, "k", "gemini-2.5-flash", [{"role": "user", "content": "hi"}])
+    assert message["tool_calls"][0]["extra_content"]["google"]["thought_signature"] == "SIG"
+    assert message["extra_content"]["google"]["thought_signature"] == "MSG"
+    assert "reasoning_effort" in sent[0] and "reasoning_effort" not in sent[1]

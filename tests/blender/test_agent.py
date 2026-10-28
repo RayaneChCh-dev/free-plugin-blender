@@ -126,6 +126,40 @@ def test():
     chat.reset()
     chat._tick()
     harness.check("reset clears the history", json.loads(scene["free_plugin_chat"])["api_history"] == [])
+
+    # Gemini: same loop on its OpenAI-compatible endpoint, its own key, model and list.
+    def fake_gemini(method, url, headers=None, body=None, timeout=60):
+        requests.append((method, url, headers, json.loads(json.dumps(body)) if body else None))
+        if url.endswith("/models"):
+            return {"data": [{"id": "models/gemini-2.5-flash"}, {"id": "models/gemini-embedding-001"},
+                             {"id": "models/gemini-3-pro-preview"}]}
+        return {"choices": [{"message": script.pop(0) if script else {"role": "assistant", "content": "Ok."}}]}
+
+    oc.request_json = fake_gemini
+    prefs.chat_provider = "GEMINI"
+    harness.check("Gemini: needs its own key", "Gemini key" in (chat.send("salut", scene) or ""))
+    os.environ["GEMINI_API_KEY"] = "g-env"
+    api_models.refresh()
+    harness.wait()
+    harness.check("Gemini: list without prefixes or embeddings",
+                  api_models.models() == ["gemini-3-pro-preview", "gemini-2.5-flash"], api_models.models())
+    harness.check("OpenAI choice untouched", api_models.current("OPENAI") == "gpt-5")
+    signed = {"id": "g1", "type": "function", "function": {"name": "scene_summary", "arguments": "{}"},
+              "extra_content": {"google": {"thought_signature": "SIG"}}}
+    script[:] = [{"role": "assistant", "tool_calls": [signed]}, {"role": "assistant", "content": "Trois objets."}]
+    requests.clear()
+    chat.send("combien d'objets ?", scene)
+    wait_chat(chat, mcp, tasks)
+    posts = [r for r in requests if r[0] == "POST"]
+    harness.check("Gemini: endpoint, key from the environment, model", posts and posts[0][1] ==
+                  "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+                  and posts[0][2]["Authorization"] == "Bearer g-env" and posts[0][3]["model"] == "gemini-3-pro-preview",
+                  posts and posts[0][:3])
+    echoed = [m for m in posts[-1][3]["messages"] if m.get("tool_calls")]
+    harness.check("Gemini: thought signature sent back", echoed and
+                  echoed[0]["tool_calls"][0]["extra_content"]["google"]["thought_signature"] == "SIG")
+    harness.check("Gemini: answer shown", chat.state.messages[-1]["text"] == "Trois objets.")
+    os.environ.pop("GEMINI_API_KEY")
     os.environ.pop("OPENAI_API_KEY", None)
     prefs.chat_provider = "CLAUDE"
 

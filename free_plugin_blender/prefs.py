@@ -21,6 +21,7 @@ def _mcp_changed(self, context):
 CHAT_PROVIDERS = (
     ("CLAUDE", "Claude (subscription)", "Claude Code with your Claude Pro/Max plan, no API key"),
     ("OPENAI", "OpenAI (API key)", "Pay per use with your OpenAI key; Claude Code is not needed"),
+    ("GEMINI", "Gemini (API key)", "Pay per use (or the free tier) with your Google AI Studio key"),
 )
 
 
@@ -89,6 +90,13 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
     )
     openai_model: bpy.props.StringProperty(
         name="OpenAI model", description="Model id; empty: the newest from the live list",
+    )
+    gemini_key: bpy.props.StringProperty(
+        name="Gemini key", subtype="PASSWORD", update=_api_changed,
+        description="From https://aistudio.google.com/apikey (env var GEMINI_API_KEY or GOOGLE_API_KEY also works)",
+    )
+    gemini_model: bpy.props.StringProperty(
+        name="Gemini model", description="Model id; empty: the newest from the live list",
     )
     chat_model: bpy.props.EnumProperty(
         name="Claude model",
@@ -221,10 +229,15 @@ def fal_key():
 
 
 def api_key(provider=None):
+    """The key of an API-key chat provider (preference first, then its environment variables)."""
+    from .providers import openai_compat
+
     provider = provider or get().chat_provider
-    if provider == "OPENAI":
-        return get().openai_key.strip() or os.environ.get("OPENAI_API_KEY", "").strip()
-    return ""
+    if provider == "CLAUDE":
+        return ""
+    own = getattr(get(), f"{provider.lower()}_key", "").strip()
+    variables = openai_compat.PROVIDERS[provider.lower()]["key_env"]
+    return own or next((os.environ[v].strip() for v in variables if os.environ.get(v, "").strip()), "")
 
 
 def meshy_key():

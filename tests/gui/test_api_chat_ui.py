@@ -62,5 +62,9 @@ run([
     lambda: None,
     lambda: None,
     lambda: check("sidebar chat draws with OpenAI", "OPENAI" in drawn, drawn[-3:]),
+    lambda: setattr(prefs, "chat_provider", "GEMINI"),
+    lambda: None,
+    lambda: check("Gemini: chip asks for its key", chip() == "Add Gemini key", chip()),
+    lambda: check("Gemini: header draws", "GEMINI" in drawn, drawn[-3:]),
     lambda: setattr(prefs, "chat_provider", "CLAUDE"),
 ], REPORT)

@@ -46,6 +46,7 @@ Then: v0.4.0 (viewport prompt bar, chat with Claude, Claude account) through the
 
 - Agent loop inside the plugin (`agent.py`) on the Phase 3 tools, through one
   OpenAI-compatible Chat Completions adapter (`providers/openai_compat.py`).
-- v0.10.0: **OpenAI** (live model list, `reasoning_effort` from the effort, token usage).
-- Next, mostly presets of the same adapter: Gemini (its OpenAI-compatible endpoint),
-  DeepSeek, then OpenRouter and a local server (Ollama).
+- **OpenAI** (live model list, `reasoning_effort` from the effort, token usage).
+- **Gemini** on its OpenAI-compatible endpoint (thought signatures kept in the history).
+- Next, presets of the same adapter: DeepSeek, then OpenRouter and a local server (Ollama).
+- Released as one version when the phase is done.
