@@ -129,21 +129,27 @@ Pour les mainteneurs : après avoir modifié `free_plugin_blender/data/models.js
 
 ## La barre de prompt dans le viewport
 
-En bas de chaque vue 3D, une barre **« Describe the scene you imagine… »**.
+En bas de chaque vue 3D, une pilule **« Describe the scene you imagine… »**,
+centrée dans l'espace libre entre la barre d'outils et la sidebar.
 Clique dessus : elle s'ouvre en carte avec
 
-- des **onglets de mode** : *Scene builder* (chat avec Claude), *3D Model*,
-  *Image*, *Material*, *Video* (si activé), *Animation*, *Assets* (Poly Haven) ;
-- la conversation, et **+** en haut à gauche pour en commencer une nouvelle ;
-- en haut à droite, l'état ou le prix : cliquer sur une étiquette rouge
-  (« Connect Claude », « Add fal.ai key »…) ouvre directement la solution ;
-- les objets sélectionnés en **@mentions** (× pour en retirer un) : Claude
-  reçoit la sélection avec ton message ;
-- **+** pour partir de la vue caméra ou d'une image, et le **menu de modèle**
-  avec les prix ; en mode *Scene builder*, le modèle Claude (Opus 5.5 par défaut,
+- en haut, les **onglets de mode** : *Scene* (chat avec Claude), *3D*, *Image*,
+  *Material*, *Video* (si activé), *Animation*, *Assets* (Poly Haven) ; à droite
+  l'état du compte (« ● Claude Max »), **+** (nouvelle conversation) et **⌄** (replier) ;
+- la conversation : tes messages en bulles, les réponses avec l'icône de Claude
+  et un peu de Markdown (**gras**, `code`, listes) ; les appels d'outils d'une
+  réponse sont **repliés en une ligne** (« 3 actions · … ✓ », clic pour les voir,
+  ✕ rouge si l'un a échoué) ; pendant une réponse, l'étape en cours s'affiche ;
+- quand un réglage manque (Claude non connecté, add-on MCP éteint, clé absente),
+  un **bandeau** explique le problème en une phrase, avec le bouton qui le règle ;
+- le champ : les objets sélectionnés en **@mentions** (× pour en retirer un ;
+  Claude reçoit la sélection avec ton message), puis le texte ;
+- en bas du champ, **+** (vue caméra ou image), le **menu de modèle**, les
+  réglages en puces ; en mode *Scene*, le modèle Claude (Opus 5.5 par défaut,
   Fable 5.1, Opus 5, Sonnet 5.5, Sonnet 5, Haiku 5.5) et l'**effort** (Low, Medium par
-  défaut, High, XHigh, Max) ;
-- le bouton **Send / Generate / Search** (Stop pendant une réponse de Claude).
+  défaut, High, XHigh, Max), les tokens de la dernière réponse et le bouton
+  d'envoi rond (Stop pendant une réponse) ; dans les modes de génération, le
+  **prix juste à côté du bouton Generate**.
 
 Entrée envoie, Maj+Entrée va à la ligne, Échap ferme. Pendant la saisie, les
 raccourcis de Blender sont suspendus ; un clic ailleurs rend la main à Blender.

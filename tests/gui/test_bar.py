@@ -23,6 +23,13 @@ def props():
     return bpy.context.scene.free_plugin
 
 
+def ids():
+    window = bpy.context.window_manager.windows[0]
+    area = next(a for a in window.screen.areas if a.type == "VIEW_3D")
+    region = next(r for r in area.regions if r.type == "WINDOW")
+    return [r[0] for r in bar.state.rects.get(region.as_pointer(), [])]
+
+
 def chip():
     return bar._info(bpy.context, bar.state.mode)[0]
 
@@ -60,6 +67,14 @@ run([
     until(lambda: not chat.state.busy and len(chat.state.messages) > 1),
     lambda: check("Enter sends, answer shown", [m["role"] for m in chat.state.messages][:2] == ["user", "assistant"]),
     lambda: check("field cleared", bar.state.field.text == ""),
+    lambda: check("tool calls folded into one line", "tools:2" in ids(), ids()),
+    lambda: click(rect("tools:2")),
+    lambda: check("click opens the group", bar.state.open_groups == {2}),
+    lambda: click(rect("tools:2")),
+    lambda: check("click again folds it", bar.state.open_groups == set()),
+    lambda: click(rect("collapse")),
+    lambda: check("collapse button closes the card", not bar.state.expanded and "pill" in ids()),
+    lambda: click(rect("pill")),
     lambda: click(rect("new")),
     lambda: check("new chat clears", chat.state.messages == []),
     lambda: click(rect("model")),

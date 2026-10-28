@@ -113,6 +113,24 @@ serveur est une option avancée pour économiser des tokens. Préférence `mcp_m
 - Historique API (`api_history`) sauvé dans le .blend sans les images.
 - **Non testé** : un vrai appel OpenAI (pas de clé). Tout passe par un faux API.
 
+### Refonte de la barre du viewport (branche `feat/bar-redesign`)
+
+Phase 4 arrêtée par l'utilisateur après DeepSeek (OpenRouter/Ollama « plus tard »).
+v0.10.0 pas encore publiée : à faire quand l'utilisateur le décide (il pousse le tag).
+
+- Puree évalué et écarté (binaires compilés, PyAV, `moderngl` OpenGL, Blender 5.1+,
+  API instable) : on garde notre rendu `gpu`/`blf`.
+- Design validé par l'utilisateur : maquette https://claude.ai/artifact/VwrG9hUpbh6YCwo3La2mrV
+  (planches Après, États, Avant, et captures de l'implémentation).
+- `overlay/richtext.py` (sans bpy) : Markdown léger et retour à la ligne par style ;
+  gras = deuxième passe décalée (Blender n'a qu'une graisse d'Inter, `blf` sans poids).
+- `overlay/thread.py` (sans bpy) : appels d'outils groupés, avatar par réponse.
+- `overlay/__init__.py` : en-tête à onglets, bandeau (`_banner`, depuis `_info`),
+  ligne d'état (`_live`), champ avec bouton rond, scissor GPU pour le fil,
+  `_span()` centre la carte hors barre d'outils et sidebar.
+- Captures : script `capture.py` dans le scratchpad de la session (Blender jetable,
+  `screenshot_area`) ; le splash se coupe par `show_splash = False` + `save_userpref`.
+
 ### Ensuite (roadmap)
 
 - Gemini fait (thought signatures : `extra_content` gardé). DeepSeek fait

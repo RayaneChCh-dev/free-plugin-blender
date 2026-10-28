@@ -29,8 +29,12 @@ def layout_ok():
     region = next(r for r in area.regions if r.type == "WINDOW")
     boxes = {r[0]: r[1:] for r in bar.state.rects.get(region.as_pointer(), [])}
     text_x, _ty, text_w, _th = boxes["text"]
+    card_x, _cy, card_w, _ch = boxes["card"]
+    generate_x, generate_y, _gw, _gh = boxes["generate"]
     chip_ends = [x + w for rid, (x, _y, w, _h) in boxes.items() if rid.startswith("control:") or rid == "model"]
-    return boxes["generate"][0] >= text_x + text_w and all(end <= boxes["generate"][0] for end in chip_ends)
+    # The button closes the bottom row: chips stop before it, the text stays inside the card.
+    return (all(end <= generate_x for end in chip_ends) and text_x + text_w <= card_x + card_w
+            and generate_y < boxes["text"][1])
 
 
 def set_model(slot, key_):
@@ -43,7 +47,7 @@ run([
     lambda: click(rect("tab:image")),
     lambda: check("Nano Banana Pro: ratio, resolution, format chips (no quality)",
                   chips() == ["control:image:aspect", "control:image:resolution", "control:image:format"], chips()),
-    lambda: check("Generate stays right of the text and chips", layout_ok()),
+    lambda: check("chips stop before Generate, text inside the card", layout_ok()),
     lambda: click(rect("control:image:aspect")),
     lambda: key("DOWN_ARROW"),
     lambda: key("DOWN_ARROW"),
