@@ -171,8 +171,10 @@ assets…) and `{MCP_SERVER}` (Python with bpy, `look`, asset libraries such as 
 {_STYLE}"""
     if OWN_SERVER in servers:
         return f"""{head} You act on the scene only through the `{OWN_SERVER}` MCP tools.
-Read the scene with scene_summary before changing it. Prefer the specific tools; run_python is the last
-resort. plugin_status lists the generation models and their prices. If a request needs something these
+Read the scene with scene_summary before changing it. Every tool call costs a full model turn: for
+several steps (many objects, search then apply, generate then place) write ONE run_script that calls
+the tools as kiln.<tool>(...), and print only what you need. run_python is the last resort.
+plugin_status lists the generation models and their prices. If a request needs something these
 tools cannot do (e.g. Sketchfab assets), say that the preference "Claude's Blender tools" →
 "mcp-for-blender + Free Plugin tools" adds more.
 

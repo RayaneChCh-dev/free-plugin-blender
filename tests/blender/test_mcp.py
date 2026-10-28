@@ -129,6 +129,28 @@ def test():
     harness.check("task_status", not error and "a red tagine" in text, text)
     harness.check("calls counted", mcp.state.calls >= 15, mcp.state.calls)
 
+    # run_script: many tool calls in one, only the printed text comes back.
+    before = len(bpy.data.objects)
+    error, text = tool("run_script", code="""
+for i in range(10):
+    kiln.add_object(kind='cube', name=f'Grid{i}', location=[i * 1.5, 0, 0], size=1)
+hits = kiln.assets(action='search', kind='hdris', query='sunset')
+try:
+    kiln.edit_object(name='Nope', delete=True)
+except KilnError as e:
+    print('caught:', e)
+finally:
+    print('hdri', hits[0]['id'])
+result = len(kiln.scene_summary().splitlines())
+""")
+    harness.check("run_script adds through the tools", not error and len(bpy.data.objects) == before + 10
+                  and bpy.data.objects["Grid9"].location.x == 13.5, text)
+    harness.check("run_script returns only what it printed", "caught: No object named 'Nope'" in text
+                  and "hdri sunset_a" in text and "result = " in text and "[13 tool call(s)" in text
+                  and "Grid3" not in text, text)
+    error, text = tool("run_script", code="kiln.object_info(name='Nope')")
+    harness.check("run_script error: traceback returned", error and "KilnError" in text, text)
+
     # Chat config per mode (through the fake claude).
     fake = harness.FIXTURES / "fakeclaude" / "claude"
     prefs.claude_path = str(fake)

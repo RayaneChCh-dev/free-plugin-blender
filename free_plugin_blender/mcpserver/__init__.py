@@ -81,6 +81,17 @@ def _call(tool, arguments):
 _registry: dict[str, protocol.Tool] = {}
 
 
+def call_tool(name, arguments):
+    """Run a tool by name (for run_script): its value, or raise its error."""
+    tool = next((t for t in tool_list() if t.name == name), None)
+    if tool is None:
+        raise protocol.ToolError(f"Unknown tool: {name}")
+    return _call(tool, arguments)
+
+
+tools.call_tool = call_tool
+
+
 def tool_list() -> list[protocol.Tool]:
     if not _registry:
         _registry.update((t.name, t) for t in tools.build())
