@@ -63,7 +63,7 @@ class FreePluginPreferences(bpy.types.AddonPreferences):
     )
     output_dir: bpy.props.StringProperty(
         name="Output folder", subtype="DIR_PATH",
-        description="Where generated files are saved (empty: the extension's user folder)",
+        description="Where generated files are saved, and where Assets › My generations reads them (empty: ~/Kiln)",
     )
     show_video: bpy.props.BoolProperty(
         name="Show video panel", default=False,
@@ -262,9 +262,24 @@ def user_dir() -> Path:
         return path
 
 
-def output_dir(*parts) -> Path:
+DEFAULT_OUTPUT = Path.home() / "Kiln"
+
+
+def output_root() -> Path:
     configured = get().output_dir.strip()
-    root = Path(bpy.path.abspath(configured)) if configured else user_dir() / "outputs"
-    path = root.joinpath(*parts)
+    return Path(bpy.path.abspath(configured)) if configured else DEFAULT_OUTPUT
+
+
+def library_roots() -> list[Path]:
+    """Folders My generations reads: the output folder, and the pre-0.12 default if it has files."""
+    roots = [output_root()]
+    legacy = user_dir() / "outputs"
+    if legacy.is_dir() and legacy.resolve() != roots[0].resolve():
+        roots.append(legacy)
+    return roots
+
+
+def output_dir(*parts) -> Path:
+    path = output_root().joinpath(*parts)
     path.mkdir(parents=True, exist_ok=True)
     return path

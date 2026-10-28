@@ -10,7 +10,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
   l'utilisateur), Poly Haven gratuit, outils locaux, et **chat avec Claude**
   dans Blender via **Claude Code** sur l'abonnement de l'utilisateur
   (`claude -p` + un serveur MCP Blender).
-- Dépôt : https://github.com/RayaneChCh-dev/free-plugin-blender, dossier local
+- Dépôt : https://github.com/RayaneChCh-dev/kiln-plugin-blender, dossier local
   `~/free-plugin-blender`. Docs utilisateur en anglais dans `README.md` (nom affiché « Kiln », images dans `docs/assets/`).
 - Né de l'analyse de l'add-on Higgsfield (dépôt local séparé, non publié :
   `~/higgsfield-blender-decoded`).
@@ -51,7 +51,8 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif (PR #6) | publiée |
 | 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés (PR #7) | publiée |
 | 0.10.0 | Phase 4 : chat avec clé API (OpenAI PR #8, Gemini PR #9, DeepSeek PR #10) | publiée |
-| 0.11.0 | Refonte de la barre du viewport (PR #11) | à publier |
+| 0.11.0 | Refonte de la barre du viewport (PR #11) | publiée |
+| 0.12.0 | README anglais « Kiln » (PR #13), fix du clipping du chat (PR #14), bibliothèque *My generations* + sortie par défaut `~/Kiln` (`library.py`) | à publier |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 

@@ -23,6 +23,8 @@ _count = 0
 
 def enable():
     addon_utils.enable(MODULE, default_set=True, handle_error=lambda error: _fail_hard(f"enable: {error}"))
+    # Generated files go to a throwaway folder, never the user's ~/Kiln.
+    bpy.context.preferences.addons[MODULE].preferences.output_dir = tempfile.mkdtemp(prefix="kiln-out-")
     return module
 
 

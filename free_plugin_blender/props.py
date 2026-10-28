@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import bpy
 
-from . import params, presets, ui_controls
+from . import library, params, presets, ui_controls
 
 
 def _source_changed(self, context):
@@ -120,6 +120,14 @@ class FreePluginProps(bpy.types.PropertyGroup):
     )
     ph_results: bpy.props.CollectionProperty(type=FreePluginAsset)
     ph_index: bpy.props.IntProperty()
+
+    # Assets › My generations (files read back from the output folder)
+    assets_source: bpy.props.EnumProperty(
+        name="Assets", items=[("POLYHAVEN", "Poly Haven", "Free CC0 assets"),
+                              ("MINE", "My generations", "What you generated, read from the output folder")],
+    )
+    lib_filter: bpy.props.EnumProperty(name="Show", items=[(key, label, "") for key, label in library.FILTERS])
+    lib_query: bpy.props.StringProperty(name="Search", description="Filter your generations by name")
 
     # Animation
     anim_query: bpy.props.StringProperty(name="Search", update=refresh_presets)

@@ -10,6 +10,7 @@ one step per key for repeated keys.
 
 import json
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -19,6 +20,8 @@ import bpy
 
 MODULE = "bl_ext.user_default.free_plugin_blender"
 addon_utils.enable(MODULE, default_set=True)
+# Generated files go to a throwaway folder, never the user's ~/Kiln.
+bpy.context.preferences.addons[MODULE].preferences.output_dir = tempfile.mkdtemp(prefix="kiln-out-")
 RESULTS, ERRORS = [], []
 
 

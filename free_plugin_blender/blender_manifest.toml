@@ -1,12 +1,12 @@
 schema_version = "1.0.0"
 
 id = "free_plugin_blender"
-version = "0.11.0"
+version = "0.12.0"
 name = "Free Plugin Blender"
 tagline = "Generate images, video, 3D and textures with your own API keys"
 maintainer = "free-plugin-blender contributors"
 type = "add-on"
-website = "https://github.com/RayaneChCh-dev/free-plugin-blender"
+website = "https://github.com/RayaneChCh-dev/kiln-plugin-blender"
 
 tags = ["3D View", "Material", "Import-Export"]
 
