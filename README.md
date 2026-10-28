@@ -46,7 +46,7 @@ python3 scripts/build.py   # ou : blender --command extension build --source-dir
 ```
 
 Puis dans Blender : *Edit → Preferences → Get Extensions → ⌄ → Install from Disk…*
-→ `dist/free_plugin_blender-0.9.0.zip`. Le panneau est dans la sidebar (N),
+→ `dist/free_plugin_blender-0.10.0.zip`. Le panneau est dans la sidebar (N),
 onglet **Free Plugin**.
 
 ## Configuration (Preferences → Add-ons → Free Plugin Blender)
@@ -236,6 +236,22 @@ port. Chaque Blender a donc un identifiant que Claude vérifie avant de modifier
 quoi que ce soit. Pour en piloter plusieurs, donne à chacun son propre port
 (add-on MCP et préférence *MCP add-on port*).
 
+### Chatter avec une clé API (OpenAI)
+
+Dans *Preferences → 1 · Chat*, *Chat with* : **Claude (subscription)** (défaut,
+via Claude Code) ou **OpenAI (API key)**. Avec OpenAI :
+
+- colle ta clé (*Get a key* ouvre <https://platform.openai.com/api-keys>), ou
+  la variable `OPENAI_API_KEY` ;
+- la **liste des modèles est lue en direct** chez OpenAI (le plus récent est choisi
+  par défaut) : menu de modèle dans la barre et la sidebar, *Refresh the model list* ;
+- l'effort (Low… Max) devient le `reasoning_effort` du modèle ; un modèle qui ne
+  raisonne pas est appelé sans ;
+- la boucle d'agent tourne dans le plugin, avec les **outils Free Plugin intégrés**
+  (les mêmes que le serveur MCP) : Claude Code et `mcp-for-blender` ne servent pas ;
+- chaque requête est payée sur ton compte OpenAI ; *Last answer* montre les tokens
+  du tour entier (toutes les étapes).
+
 ## Piloter depuis Claude Code (terminal)
 
 Le serveur intégré marche aussi depuis Claude Code dans un terminal : dans les
@@ -270,7 +286,9 @@ free_plugin_blender/
   __init__.py         enregistrement
   prefs.py            clés, dossier de sortie, accès au catalogue
   account.py          connexion de l'abonnement Claude (claude auth)
-  chat.py             chat : claude -p + serveurs MCP selon le mode
+  chat.py             chat : claude -p + serveurs MCP selon le mode, ou l'agent à clé API
+  agent.py            boucle d'agent (modèle → outils → modèle), sans bpy
+  api_models.py       listes de modèles des fournisseurs à clé API, en cache
   mcpserver/          serveur MCP intégré : protocol.py, httpserver.py (sans bpy), tools.py
   overlay/            barre de prompt du viewport (gpu/blf, champ texte, modal)
   catalog.py          catalogue de modèles (data/models.json + ton models.json)
@@ -288,7 +306,7 @@ free_plugin_blender/
   tasks.py            réseau dans un thread, scène sur le thread principal
   scene.py            import GLB, matériaux, HDRI, plan image, strip vidéo
   net.py              HTTP stdlib, téléchargement, data URI
-  providers/          fal.py, fal_schema.py, meshy.py, polyhaven.py (sans bpy)
+  providers/          fal.py, fal_schema.py, meshy.py, polyhaven.py, openai_compat.py (sans bpy)
 ```
 
 ## Développement

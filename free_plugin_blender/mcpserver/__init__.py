@@ -6,7 +6,8 @@ HTTP threads; tools that touch bpy are queued to the main thread (`on_main`) and
 by a `bpy.app.timers` pump, the same way as the generation tasks.
 
 It runs when the chat uses it (preference "Claude's Blender tools") or when the user
-keeps it on for Claude Code in a terminal (`terminal_command()`).
+keeps it on for Claude Code in a terminal (`terminal_command()`). The API-key chat
+(`agent.py`) calls the same tools in-process through `call_blocks()`, server or not.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ class _State:
     server: httpserver.Server | None = None
     error = ""
     calls = 0
+    clients = 0  # in-process users (the API-key chat) that need the main-thread pump
 
 
 state = _State()
@@ -63,12 +65,51 @@ def pump():
         except Exception as error:  # noqa: BLE001 - handed back to the HTTP thread
             box["error"] = error
         done.set()
-    return 0.05 if state.server is not None else None
+    return 0.05 if state.server is not None or state.clients > 0 else None
+
+
+def _ensure_pump():
+    if not bpy.app.timers.is_registered(pump):
+        bpy.app.timers.register(pump, first_interval=0.05, persistent=True)
 
 
 def _call(tool, arguments):
     state.calls += 1
     return on_main(lambda: tool.run(**arguments)) if tool.main_thread else tool.run(**arguments)
+
+
+_registry: dict[str, protocol.Tool] = {}
+
+
+def tool_list() -> list[protocol.Tool]:
+    if not _registry:
+        _registry.update((t.name, t) for t in tools.build())
+    return list(_registry.values())
+
+
+def call_blocks(name, arguments):
+    """Run a tool for the in-process agent: (MCP content blocks, is_error). Any thread but the main one."""
+    tool = next((t for t in tool_list() if t.name == name), None)
+    if tool is None:
+        return protocol.content(f"Unknown tool: {name}"), True
+    try:
+        return protocol.content(_call(tool, arguments)), False
+    except protocol.ToolError as error:
+        return protocol.content(str(error)), True
+    except TypeError as error:
+        return protocol.content(f"Bad arguments: {error}"), True
+    except Exception as error:  # noqa: BLE001 - reported to the model
+        return protocol.content(f"{type(error).__name__}: {error}"), True
+
+
+def acquire():
+    """Main thread: an in-process client starts (keeps the pump running)."""
+    state.clients += 1
+    _ensure_pump()
+
+
+def release():
+    state.clients = max(0, state.clients - 1)
 
 
 def _version():
@@ -93,7 +134,7 @@ def start():
     if state.server is not None:
         return state.server
     port = prefs.get().own_mcp_port
-    dispatcher = protocol.Dispatcher(tools.build(), _call, name="free-plugin-blender", version=_version(),
+    dispatcher = protocol.Dispatcher(tool_list(), _call, name="free-plugin-blender", version=_version(),
                                      instructions=tools.INSTRUCTIONS)
     try:
         state.server = httpserver.Server(dispatcher.handle, token(), port=port).start()
@@ -101,8 +142,7 @@ def start():
         state.error = f"Port {port} is taken: choose another, or 0 for automatic" if port else str(error)
         return None
     state.error = ""
-    if not bpy.app.timers.is_registered(pump):
-        bpy.app.timers.register(pump, first_interval=0.05, persistent=True)
+    _ensure_pump()
     return state.server
 
 
@@ -110,7 +150,7 @@ def stop():
     if state.server is not None:
         state.server.stop()
         state.server = None
-    if bpy.app.timers.is_registered(pump):
+    if state.clients == 0 and bpy.app.timers.is_registered(pump):
         bpy.app.timers.unregister(pump)
 
 

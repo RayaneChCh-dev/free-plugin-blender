@@ -653,6 +653,21 @@ class FREEPLUGIN_OT_claude_install(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class FREEPLUGIN_OT_api_models_refresh(bpy.types.Operator):
+    bl_idname = "freeplugin.api_models_refresh"
+    bl_label = "Refresh the model list"
+    bl_description = "Read the provider's current models again"
+
+    def execute(self, context):
+        from . import api_models
+
+        if not prefs.api_key():
+            self.report({"ERROR"}, "Set the API key first")
+            return {"CANCELLED"}
+        api_models.refresh()
+        return {"FINISHED"}
+
+
 class FREEPLUGIN_OT_mcp_copy_command(bpy.types.Operator):
     bl_idname = "freeplugin.mcp_copy_command"
     bl_label = "Copy the terminal command"
@@ -738,6 +753,7 @@ classes = (
     FREEPLUGIN_OT_claude_disconnect,
     FREEPLUGIN_OT_claude_refresh,
     FREEPLUGIN_OT_claude_install,
+    FREEPLUGIN_OT_api_models_refresh,
     FREEPLUGIN_OT_mcp_copy_command,
     FREEPLUGIN_OT_mcp_new_token,
     FREEPLUGIN_OT_open_url,

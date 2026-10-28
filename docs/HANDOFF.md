@@ -49,7 +49,8 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.6.0 | Réglages simples par mode (`controls.py`), Meshy 7 via fal.ai (PR #4) | publiée |
 | 0.7.0 | Onglet Animation : presets Meshy, mouvement libre, copie (PR #5) | publiée |
 | 0.8.0 | Retexture via fal.ai (`fal-ai/meshy/retexture`), Meshy devient facultatif (PR #6) | publiée |
-| 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés | PR `feat/local-mcp` |
+| 0.9.0 | Serveur MCP intégré, 3 modes d'outils, tokens affichés (PR #7) | publiée |
+| 0.10.0 | Phase 4 : chat avec une clé OpenAI, boucle d'agent dans le plugin | PR `feat/openai-agent` |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
@@ -94,14 +95,27 @@ serveur est une option avancée pour économiser des tokens. Préférence `mcp_m
 - Pas encore mesuré : l'écart de tokens réel entre les modes (le plugin l'affiche
   sous le chat : *Last answer*).
 
+### Phase 4 : fournisseurs à clé API (v0.10.0 = OpenAI, branche `feat/openai-agent`)
+
+- Préférence `chat_provider` : `CLAUDE` (défaut, Claude Code) / `OPENAI`. Clé
+  `openai_key` (ou `OPENAI_API_KEY`), modèle `openai_model` (vide : le plus récent).
+- `providers/openai_compat.py` (sans bpy) : Chat Completions + tools, `GET /models`
+  filtré (`chat_models`, tri par version), `reasoning_effort` retiré si le modèle le
+  refuse. Un seul adaptateur pour la suite : Gemini (endpoint compatible OpenAI),
+  DeepSeek, OpenRouter, Ollama = surtout des entrées de `PROVIDERS`.
+- `agent.py` (sans bpy) : boucle modèle → `tool_calls` → messages `tool` ; images
+  (capture) renvoyées dans un message user. Chaque appel d'outil reçoit sa réponse
+  avant un arrêt (exigence de l'API).
+- `mcpserver.call_blocks()` / `acquire()` / `release()` : l'agent appelle les
+  mêmes outils en interne ; la pompe du thread principal tourne tant qu'il travaille.
+- Historique API (`api_history`) sauvé dans le .blend sans les images.
+- **Non testé** : un vrai appel OpenAI (pas de clé). Tout passe par un faux API.
+
 ### Ensuite (roadmap)
 
+- Gemini, DeepSeek, puis OpenRouter / Ollama : une PR par fournisseur.
 - Sketchfab / Poly Pizza et un `look` annoté dans nos outils, si le mode OWN montre
   qu'ils manquent.
-- **Phase 4** : autres fournisseurs avec clé API (ordre validé : OpenAI → Gemini →
-  DeepSeek → OpenRouter/Ollama). La boucle d'agent tourne dans le plugin avec les
-  outils de `mcpserver/tools.py` (même registre). Listes de modèles lues en direct,
-  effort Medium par défaut.
 
 ## 5. Architecture (fichiers clés)
 
@@ -134,7 +148,7 @@ toute modification de `data/models.json`.
 
 ```bash
 uvx ruff@0.14.0 check .
-python3 -m pytest -q                                                   # 90 passent
+python3 -m pytest -q                                                   # 96 passent
 python3 scripts/run_blender_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender
 python3 scripts/run_gui_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender   # fenêtre, pas en CI
 ```
