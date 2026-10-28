@@ -66,5 +66,8 @@ run([
     lambda: None,
     lambda: check("Gemini: chip asks for its key", chip() == "Add Gemini key", chip()),
     lambda: check("Gemini: header draws", "GEMINI" in drawn, drawn[-3:]),
+    lambda: setattr(prefs, "chat_provider", "DEEPSEEK"),
+    lambda: None,
+    lambda: check("DeepSeek: chip asks for its key", chip() == "Add DeepSeek key", chip()),
     lambda: setattr(prefs, "chat_provider", "CLAUDE"),
 ], REPORT)

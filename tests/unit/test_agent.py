@@ -130,3 +130,37 @@ def test_gemini_thought_signatures_kept_and_thinking_retry(monkeypatch):
     assert message["tool_calls"][0]["extra_content"]["google"]["thought_signature"] == "SIG"
     assert message["extra_content"]["google"]["thought_signature"] == "MSG"
     assert "reasoning_effort" in sent[0] and "reasoning_effort" not in sent[1]
+
+
+def test_deepseek_rules(monkeypatch):
+    assert oc.chat_models(["deepseek-flash", "deepseek-v4-pro", "deepseek-v4-flash-vision-exp", "gpt-5"],
+                          "deepseek") == ["deepseek-v4-pro", "deepseek-flash"]
+    assert not oc.sees_images("deepseek") and oc.sees_images("openai")
+    sent = []
+
+    def fake(method, url, headers=None, body=None, timeout=60):
+        if url.endswith("/models"):
+            raise ApiError("HTTP 404 on https://api.deepseek.com/models: not found")
+        sent.append(dict(body))
+        return {"choices": [{"message": {"role": "assistant", "content": "ok", "reasoning_content": "because"}}]}
+
+    monkeypatch.setattr(oc, "request_json", fake)
+    assert oc.list_models("https://api.deepseek.com", "k", "deepseek") == ["deepseek-flash", "deepseek-v4-pro"]
+    for ours, theirs in (("low", "low"), ("medium", "high"), ("xhigh", "high"), ("max", "max")):
+        message, _ = oc.complete("https://api.deepseek.com", "k", "deepseek-flash", [], effort=ours,
+                                 provider="deepseek")
+        assert sent[-1]["reasoning_effort"] == theirs
+    assert message["reasoning_content"] == "because"
+    oc.complete("https://api.openai.com/v1", "k", "gpt-5", [], effort="max")
+    assert sent[-1]["reasoning_effort"] == "high"
+
+
+def test_text_only_model_gets_no_image():
+    replies = iter([({"role": "assistant", "tool_calls": [_call("a", "screenshot", {})]}, {}),
+                    ({"role": "assistant", "content": "Vu."}, {})])
+    history = []
+    agent.run_turn(history, "regarde", complete=lambda h: next(replies),
+                   call_tool=lambda n, a: ([{"type": "image", "data": "QUJD", "mimeType": "image/png"}], False),
+                   on_event=lambda role, text: None, images=False)
+    assert [m["role"] for m in history] == ["user", "assistant", "tool", "assistant"]
+    assert "image not shown" in history[2]["content"] and "QUJD" not in json.dumps(history)
