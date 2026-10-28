@@ -20,7 +20,7 @@ import traceback
 
 import bpy
 
-from .. import account, catalog, chat, claude_models, prefs, tasks
+from .. import account, catalog, chat, claude_models, prefs, tasks, ui_controls
 from . import gfx
 from .field import Field, wrap
 
@@ -321,6 +321,10 @@ def _draw_assets(context, rects, x, y, width, height, s):
         rects.append((item_id, rx, ry + 2 * s, column_width, row - 4 * s))
 
 
+def props_entry_is_provider(context):
+    return bool((context.scene.free_plugin.mesh_model.entry() or {}).get("provider"))
+
+
 def _draw_card(context, region, s, rects):
     mode = state.mode
     pad, gap = 14 * s, 8 * s
@@ -448,6 +452,19 @@ def _draw_card(context, region, s, rects):
     if mode == "scene":
         effort = "Effort: " + claude_models.effort_label(prefs.get().chat_effort)
         _chip(rects, "effort", bx, by + 4 * s, effort, 12 * s, s, chevron=True)
+    elif mode in ui_controls.BAR_CONTROLS and not (mode == "mesh" and props_entry_is_provider(context)):
+        slot = SLOT_OF_MODE[mode]
+        room = text_x + text_width
+        for key in ui_controls.BAR_CONTROLS[mode]:
+            control, supported, _value, label = ui_controls.control_state(context.scene, slot, key)
+            if not supported:
+                continue
+            text = label or control.label
+            chip_width = gfx.measure(text, 12 * s) + 32 * s
+            if bx + chip_width > room:
+                break
+            bx += _chip(rects, f"control:{slot}:{key}", bx, by + 4 * s, text, 12 * s, s, chevron=True,
+                        icon_color=gfx.TEXT if label else gfx.TEXT_DIM) + 6 * s
 
     # Generate / Send / Stop.
     gx = x + width - pad - generate_width
@@ -578,6 +595,10 @@ def _click(context, hit):
         _open_menu(context, FREEPLUGIN_MT_overlay_model.bl_idname)
     elif hit == "effort":
         _open_menu(context, FREEPLUGIN_MT_overlay_effort.bl_idname)
+    elif hit.startswith("control:"):
+        _prefix, slot, key = hit.split(":")
+        ui_controls.open_menu(slot, key)
+        _open_menu(context, ui_controls.FREEPLUGIN_MT_control.bl_idname)
     elif hit == "attach":
         _open_menu(context, FREEPLUGIN_MT_overlay_attach.bl_idname)
     elif hit == "attach_clear":

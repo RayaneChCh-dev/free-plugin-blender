@@ -1,8 +1,9 @@
 {
-  "_comment": "Bundled model catalog. Add your own in the user models.json (Preferences > Open my models.json): same format, an entry with the same key replaces this one. 'text' and 'image' are fal.ai endpoint ids used with a prompt only and with an input image; 'defaults' pre-sets options.",
+  "_comment": "Bundled model catalog. Add your own in the user models.json (Preferences > Open my models.json): same format, an entry with the same key replaces this one. 'text' and 'image' are fal.ai endpoint ids used with a prompt only and with an input image; 'defaults' pre-sets options. 'size_object' + 'resolutions': the model takes {width, height} in image_size, so the Resolution control can set it.",
   "image": [
     {"key": "seedream45", "label": "Seedream 4.5", "cost": "$0.04 / image",
-     "text": "fal-ai/bytedance/seedream/v4.5/text-to-image", "image": "fal-ai/bytedance/seedream/v4.5/edit"},
+     "text": "fal-ai/bytedance/seedream/v4.5/text-to-image", "image": "fal-ai/bytedance/seedream/v4.5/edit",
+     "size_object": true, "resolutions": ["2K", "4K"]},
     {"key": "nano_banana", "label": "Nano Banana", "cost": "$0.04 / image",
      "text": "fal-ai/nano-banana", "image": "fal-ai/nano-banana/edit"},
     {"key": "nano_banana_pro", "label": "Nano Banana Pro", "cost": "$0.15 / image",
@@ -41,6 +42,8 @@
      "text": "tripo3d/h3.1/text-to-3d", "image": "tripo3d/h3.1/image-to-3d"},
     {"key": "hunyuan", "label": "Hunyuan3D 3.1 Pro", "cost": "$0.38 (+$0.15 PBR)",
      "text": "fal-ai/hunyuan-3d/v3.1/pro/text-to-3d", "image": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d"},
-    {"key": "meshy", "label": "Meshy (own key)", "cost": "Meshy credits", "provider": "meshy"}
+    {"key": "meshy7", "label": "Meshy 7", "cost": "$0.80",
+     "text": "fal-ai/meshy/v7/text-to-3d", "image": "fal-ai/meshy/v7/image-to-3d"},
+    {"key": "meshy", "label": "Meshy (own key, credits)", "cost": "Meshy credits", "provider": "meshy"}
   ]
 }

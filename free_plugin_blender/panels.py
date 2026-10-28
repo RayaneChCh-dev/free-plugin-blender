@@ -12,7 +12,7 @@ from pathlib import Path
 
 import bpy
 
-from . import account, chat, params, prefs, tasks
+from . import account, chat, params, prefs, tasks, ui_controls
 
 _ROLE_ICONS = {"user": "USER", "assistant": "LIGHT_SUN", "tool": "TOOL_SETTINGS", "error": "ERROR", "info": "INFO"}
 _TASK_ICONS = {"running": "SORTTIME", "done": "CHECKMARK", "error": "ERROR"}
@@ -182,7 +182,9 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
             body = _section(layout, "mesh", "3D Model", "MESH_MONKEY")
             if body is not None:
                 body.prop(props, "mesh_source", expand=True)
-                params.draw_slot(body, context.scene, "mesh")
+                provider = (props.mesh_model.entry() or {}).get("provider")
+                params.draw_slot(body, context.scene, "mesh", None if provider else
+                                 lambda box: ui_controls.draw_settings(box, context.scene, "mesh"))
                 entry = props.mesh_model.entry() or {}
                 if props.mesh_source == "TEXT":
                     body.prop(props, "mesh_prompt", text="")
@@ -221,7 +223,8 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
         elif tab == "IMAGE":
             body = _section(layout, "image", "Image", "IMAGE_DATA")
             if body is not None:
-                params.draw_slot(body, context.scene, "image")
+                params.draw_slot(body, context.scene, "image",
+                                 lambda box: ui_controls.draw_settings(box, context.scene, "image"))
                 body.prop(props, "image_prompt", text="")
                 body.prop(props, "image_reference")
                 if props.image_reference == "FILE":
@@ -242,7 +245,8 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
             else:
                 body = _section(layout, "video", "Video", "FILE_MOVIE")
                 if body is not None:
-                    params.draw_slot(body, context.scene, "video")
+                    params.draw_slot(body, context.scene, "video",
+                                     lambda box: ui_controls.draw_settings(box, context.scene, "video"))
                     body.prop(props, "video_prompt", text="")
                     body.prop(props, "video_source")
                     body.operator("freeplugin.generate_video", icon="PLAY")

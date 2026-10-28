@@ -1,0 +1,161 @@
+{
+ "id": "fal-ai/meshy/v7/text-to-3d",
+ "prompt_field": "prompt",
+ "image_field": "texture_image_url",
+ "image_list": false,
+ "fields": [
+  {
+   "name": "mode",
+   "title": "Mode",
+   "kind": "ENUM",
+   "description": "Generation mode. 'preview' returns untextured geometry only, 'full' returns textured model (preview + refine).",
+   "options": [
+    "preview",
+    "full"
+   ],
+   "default": "full"
+  },
+  {
+   "name": "seed",
+   "title": "Seed",
+   "kind": "INT",
+   "description": "Seed for reproducible results. Same prompt and seed usually generate the same result."
+  },
+  {
+   "name": "model_type",
+   "title": "Model Type",
+   "kind": "ENUM",
+   "description": "Type of 3D mesh generation. 'standard' produces a regular high-detail mesh; 'lowpoly' produces a low-poly mesh optimized for cleaner polygons; 'smart-topology' (Smart Topology T2.5) and 'smart-topology-t2' (Smart Topology T2) produce clean, triangle-only meshes with natively separated parts on the g",
+   "options": [
+    "standard",
+    "lowpoly",
+    "smart-topology",
+    "smart-topology-t2"
+   ],
+   "default": "standard"
+  },
+  {
+   "name": "topology",
+   "title": "Topology",
+   "kind": "ENUM",
+   "description": "Specify the topology of the generated model. Quad for smooth surfaces, Triangle for detailed geometry.",
+   "options": [
+    "quad",
+    "triangle"
+   ],
+   "default": "triangle"
+  },
+  {
+   "name": "target_polycount",
+   "title": "Target Polycount",
+   "kind": "INT",
+   "description": "Target number of polygons in the generated model. When model_type is a smart topology option and this is left unset, that model's default is used instead (15,000 for T2.5, 4,000 for T2); the maximum is 30,000 for T2.5 and 15,000 for T2.",
+   "minimum": 100,
+   "maximum": 300000,
+   "default": 30000
+  },
+  {
+   "name": "should_remesh",
+   "title": "Should Remesh",
+   "kind": "BOOL",
+   "description": "Whether to enable the remesh phase. When false, returns unprocessed triangular mesh.",
+   "default": true
+  },
+  {
+   "name": "symmetry_mode",
+   "title": "Symmetry Mode",
+   "kind": "ENUM",
+   "description": "Controls symmetry behavior during model generation.",
+   "options": [
+    "off",
+    "auto",
+    "on"
+   ],
+   "default": "auto"
+  },
+  {
+   "name": "enable_pbr",
+   "title": "Enable Pbr",
+   "kind": "BOOL",
+   "description": "Generate PBR Maps (metallic, roughness, normal) in addition to base color.",
+   "default": false
+  },
+  {
+   "name": "is_a_t_pose",
+   "title": "Is A T Pose",
+   "kind": "BOOL",
+   "description": "Deprecated: use pose_mode instead. When true, generates a T-pose model.",
+   "default": false
+  },
+  {
+   "name": "pose_mode",
+   "title": "Pose Mode",
+   "kind": "ENUM",
+   "description": "Pose mode for the generated model. 'a-pose' generates an A-pose, 't-pose' generates a T-pose, empty string for no specific pose.",
+   "options": [
+    "a-pose",
+    "t-pose",
+    ""
+   ],
+   "default": ""
+  },
+  {
+   "name": "enable_prompt_expansion",
+   "title": "Enable Prompt Expansion",
+   "kind": "BOOL",
+   "description": "Whether to enable prompt expansion. This will use a large language model to expand the prompt with additional details while maintaining the original meaning.",
+   "default": false
+  },
+  {
+   "name": "texture_prompt",
+   "title": "Texture Prompt",
+   "kind": "STRING",
+   "description": "Additional text prompt to guide the texturing process (only used in 'full' mode)"
+  },
+  {
+   "name": "enable_rigging",
+   "title": "Enable Rigging",
+   "kind": "BOOL",
+   "description": "Automatically rig the generated model as a humanoid character. Includes basic walking and running animations. Best results with humanoid characters that have clearly defined limbs.",
+   "default": false
+  },
+  {
+   "name": "rigging_height_meters",
+   "title": "Rigging Height Meters",
+   "kind": "FLOAT",
+   "description": "Approximate height of the character in meters. Only used when enable_rigging is true.",
+   "default": 1.7
+  },
+  {
+   "name": "enable_animation",
+   "title": "Enable Animation",
+   "kind": "BOOL",
+   "description": "Apply an animation preset to the rigged model. Requires enable_rigging to be true.",
+   "default": false
+  },
+  {
+   "name": "animation_action_id",
+   "title": "Animation Action Id",
+   "kind": "INT",
+   "description": "Animation preset ID from Meshy's library. Only used when enable_animation is true; in that case it must be in [0, 696] (``0`` is the \"Idle\" preset) and is otherwise rejected with a 422. See https://docs.meshy.ai/en/api/animation-library for available action IDs.",
+   "default": 92
+  },
+  {
+   "name": "geometry_resolution",
+   "title": "Geometry Resolution",
+   "kind": "ENUM",
+   "description": "Geometry resolution. Meshy-7 supports standard and 2k.",
+   "options": [
+    "standard",
+    "2k"
+   ]
+  },
+  {
+   "name": "ultra_mode",
+   "title": "Ultra Mode",
+   "kind": "BOOL",
+   "description": "Deprecated: use geometry_resolution='2k'. If both fields are provided, geometry_resolution takes precedence.",
+   "default": false
+  }
+ ]
+}

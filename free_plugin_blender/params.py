@@ -187,7 +187,7 @@ def sync_scene(scene):
         sync_slot(scene, slot_name)
 
 
-def draw_slot(layout, scene, slot_name):
+def draw_slot(layout, scene, slot_name, before_advanced=None):
     slot = getattr(scene.free_plugin, f"{slot_name}_model")
     layout.prop(slot, "model", text="")
     if slot.model == catalog.CUSTOM:
@@ -203,10 +203,12 @@ def draw_slot(layout, scene, slot_name):
         layout.label(text="This model needs an input image", icon="ERROR")
     if slot.status:
         layout.label(text=slot.status, icon="SORTTIME")
+    if before_advanced is not None:
+        before_advanced(layout)
     if not slot.params:
         return
     header, body = layout.panel(f"freeplugin_{slot_name}_options", default_closed=True)
-    header.label(text=f"Options ({len(slot.params)})")
+    header.label(text=f"Advanced ({len(slot.params)})")
     if body is None:
         return
     column = body.column()
