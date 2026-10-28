@@ -7,7 +7,7 @@ that such a client can call.
 
 import bpy
 
-from . import catalog, operators, panels, params, prefs, props, tasks
+from . import catalog, chat, operators, overlay, panels, params, prefs, props, tasks
 
 _classes = (prefs.FreePluginPreferences, *operators.classes, *panels.classes)
 
@@ -19,9 +19,13 @@ def register():
     catalog.configure(prefs.user_dir())
     tasks.register()
     params.register_handlers()
+    chat.register()
+    overlay.register()
 
 
 def unregister():
+    overlay.unregister()
+    chat.unregister()
     params.unregister_handlers()
     tasks.unregister()
     for cls in reversed(_classes):

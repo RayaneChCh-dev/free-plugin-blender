@@ -1,16 +1,21 @@
-"""Sidebar (N) > Free Plugin."""
+"""Sidebar (N) > Free Plugin: a status header, tabs, and collapsible sections per tab.
+
+The viewport prompt bar (overlay/) is the quick way in; this panel holds every
+setting, the model options and the generation history.
+"""
 
 from __future__ import annotations
 
+import re
+import textwrap
+from pathlib import Path
+
 import bpy
 
-from . import params, prefs, tasks
+from . import account, chat, params, prefs, tasks
 
-
-class _Panel(bpy.types.Panel):
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "Free Plugin"
+_ROLE_ICONS = {"user": "USER", "assistant": "LIGHT_SUN", "tool": "TOOL_SETTINGS", "error": "ERROR", "info": "INFO"}
+_TASK_ICONS = {"running": "SORTTIME", "done": "CHECKMARK", "error": "ERROR"}
 
 
 class FREEPLUGIN_UL_assets(bpy.types.UIList):
@@ -19,165 +24,243 @@ class FREEPLUGIN_UL_assets(bpy.types.UIList):
         layout.label(text=item.name, icon=icon)
 
 
-class FREEPLUGIN_PT_main(_Panel):
-    bl_label = "Free Plugin"
+def _section(layout, panel_id, title, icon, *, closed=False):
+    header, body = layout.panel(f"freeplugin_{panel_id}", default_closed=closed)
+    header.label(text=title, icon=icon)
+    return body
 
-    def draw(self, context):
-        layout = self.layout
-        col = layout.column(align=True)
-        col.label(text="fal.ai: " + ("ready" if prefs.fal_key() else "no key"),
-                  icon="CHECKMARK" if prefs.fal_key() else "ERROR")
-        col.label(text="Meshy: " + ("ready" if prefs.meshy_key() else "optional, no key"),
-                  icon="CHECKMARK" if prefs.meshy_key() else "DOT")
-        col.label(text="Poly Haven: free", icon="CHECKMARK")
+
+def draw_claude_account(layout):
+    """Status of the Claude subscription and the buttons to connect it."""
+    info = account.account
+    if chat.claude_executable() is None:
+        layout.label(text="Claude Code is not installed", icon="ERROR")
+        layout.label(text="The chat uses your Claude subscription through it.")
         row = layout.row(align=True)
-        row.operator("preferences.addon_show", text="Keys", icon="PREFERENCES").module = prefs.ADDON_ID
-        row.operator("freeplugin.open_outputs", text="Outputs", icon="FILE_FOLDER")
-
-
-class FREEPLUGIN_PT_image(_Panel):
-    bl_label = "Image"
-    bl_parent_id = "FREEPLUGIN_PT_main"
-
-    def draw(self, context):
-        props = context.scene.free_plugin
-        layout = self.layout
-        params.draw_slot(layout, context.scene, "image")
-        layout.prop(props, "image_prompt", text="")
-        layout.prop(props, "image_reference")
-        if props.image_reference == "FILE":
-            layout.prop(props, "image_reference_path", text="")
-        layout.prop(props, "image_placement")
-        layout.operator("freeplugin.generate_image", icon="IMAGE_DATA")
-
-
-class FREEPLUGIN_PT_material(_Panel):
-    bl_label = "Material"
-    bl_parent_id = "FREEPLUGIN_PT_main"
-
-    def draw(self, context):
-        props = context.scene.free_plugin
-        layout = self.layout
-        layout.label(text="Uses the Image panel's model", icon="INFO")
-        layout.prop(props, "texture_prompt", text="")
-        layout.prop(props, "texture_tiling")
-        layout.operator("freeplugin.generate_texture", icon="MATERIAL")
-
-
-class FREEPLUGIN_PT_video(_Panel):
-    bl_label = "Video"
-    bl_parent_id = "FREEPLUGIN_PT_main"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    @classmethod
-    def poll(cls, context):
-        return prefs.get().show_video
-
-    def draw(self, context):
-        props = context.scene.free_plugin
-        layout = self.layout
-        params.draw_slot(layout, context.scene, "video")
-        layout.prop(props, "video_prompt", text="")
-        layout.prop(props, "video_source")
-        layout.operator("freeplugin.generate_video", icon="FILE_MOVIE")
-
-
-class FREEPLUGIN_PT_model(_Panel):
-    bl_label = "3D"
-    bl_parent_id = "FREEPLUGIN_PT_main"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    def draw(self, context):
-        props = context.scene.free_plugin
-        layout = self.layout
-        layout.prop(props, "mesh_source", expand=True)
-        params.draw_slot(layout, context.scene, "mesh")
-        entry = props.mesh_model.entry() or {}
-        if props.mesh_source == "TEXT":
-            layout.prop(props, "mesh_prompt", text="")
-            if entry and not entry.get("text") and not entry.get("provider"):
-                layout.label(text="Text → image (Image panel model) → 3D", icon="INFO")
-        elif props.mesh_source == "FILE":
-            layout.prop(props, "mesh_image_path", text="")
-        if entry.get("provider") == "meshy":
-            row = layout.row()
-            row.prop(props, "mesh_texture")
-            sub = row.row()
-            sub.enabled = props.mesh_texture
-            sub.prop(props, "mesh_pbr")
-        layout.operator("freeplugin.generate_3d", icon="MESH_MONKEY")
-
-        layout.separator()
-        layout.label(text="Rig the active character")
-        layout.prop(props, "rig_provider", text="")
-        layout.prop(props, "rig_height")
-        layout.operator("freeplugin.rig", icon="ARMATURE_DATA")
-
-        layout.separator()
-        layout.label(text="Retexture the active object (Meshy key)")
-        col = layout.column()
-        col.enabled = bool(prefs.meshy_key())
-        col.prop(props, "retexture_prompt", text="Style")
-        col.operator("freeplugin.retexture", icon="BRUSH_DATA")
-
-
-class FREEPLUGIN_PT_polyhaven(_Panel):
-    bl_label = "Poly Haven (free)"
-    bl_parent_id = "FREEPLUGIN_PT_main"
-    bl_options = {"DEFAULT_CLOSED"}
-
-    def draw(self, context):
-        props = context.scene.free_plugin
-        layout = self.layout
-        layout.prop(props, "ph_kind", expand=True)
+        row.operator("freeplugin.claude_install", icon="IMPORT")
+        row.operator("freeplugin.claude_refresh", text="", icon="FILE_REFRESH")
+        return
+    if info.login_running:
+        layout.label(text="Finish signing in in your browser…", icon="SORTTIME")
+        if info.login_url:
+            layout.operator("freeplugin.open_url", text="Open the sign-in page again", icon="URL").url = info.login_url
         row = layout.row(align=True)
-        row.prop(props, "ph_query", text="", icon="VIEWZOOM")
-        row.operator("freeplugin.polyhaven_search", text="", icon="VIEWZOOM")
-        layout.template_list("FREEPLUGIN_UL_assets", "", props, "ph_results", props, "ph_index", rows=5)
+        row.prop(context_props(), "auth_code", text="Code")
+        row.operator("freeplugin.claude_send_code", text="", icon="CHECKMARK")
+        layout.label(text="Only paste a code if the page shows one.")
+        layout.operator("freeplugin.claude_cancel", icon="CANCEL")
+        return
+    if info.logged_in:
+        layout.label(text=account.label(), icon="CHECKMARK")
+        row = layout.row(align=True)
+        row.operator("freeplugin.claude_refresh", text="Check again", icon="FILE_REFRESH")
+        row.operator("freeplugin.claude_disconnect", icon="X")
+        return
+    if info.logged_in is None:
+        layout.label(text="Checking your Claude sign-in…", icon="SORTTIME")
+        return
+    layout.label(text="Not connected", icon="ERROR")
+    layout.operator("freeplugin.claude_connect", icon="URL")
+    layout.label(text="Uses your Claude Pro/Max plan. No API key needed.")
+    if info.message:
+        layout.label(text=info.message, icon="INFO")
+
+
+def context_props():
+    return bpy.context.scene.free_plugin
+
+
+def _status_header(layout, context):
+    box = layout.box()
+    row = box.row()
+    row.label(text="Free Plugin", icon="PLUGIN")
+    row.label(text=f"v{_version()}")
+    row.operator("preferences.addon_show", text="", icon="PREFERENCES").module = prefs.ADDON_ID
+    column = box.column(align=True)
+    if not account.ready():
+        column.label(text=account.label(), icon="ERROR")
+    else:
+        column.label(text=account.label(), icon="CHECKMARK")
+    fal = bool(prefs.fal_key())
+    column.label(text="fal.ai key: set" if fal else "fal.ai key: not set (Image, 3D, Video)",
+                 icon="CHECKMARK" if fal else "DOT")
+    own = getattr(context.scene, "blendermcp_server_running", None)
+    if chat.state.mcp_listening and own is False:
+        column.label(text="Blender MCP: used by another Blender", icon="ERROR")
+    elif chat.state.mcp_listening:
+        column.label(text="Blender MCP: on", icon="CHECKMARK")
+    else:
+        column.label(text="Blender MCP: off (needed by the chat)", icon="ERROR")
+
+
+def _version():
+    manifest = Path(__file__).with_name("blender_manifest.toml").read_text()
+    match = re.search(r'^version = "(.+)"', manifest, re.M)
+    return match[1] if match else "?"
+
+
+def _draw_chat(layout, context):
+    props = context.scene.free_plugin
+    state = chat.state
+    width = max(24, int((context.region.width - 50) / (7 * context.preferences.system.ui_scale)))
+    column = layout.column(align=True)
+    shown = state.messages[-10:]
+    if len(state.messages) > len(shown):
+        column.label(text=f"… {len(state.messages) - len(shown)} earlier messages (Transcript)")
+    for message in shown:
+        box = column.box().column(align=True)
+        lines = []
+        for paragraph in message["text"].splitlines() or [""]:
+            lines += textwrap.wrap(paragraph, width) or [""]
+        limit = 2 if message["role"] == "tool" else 30
+        for index, line in enumerate(lines[:limit]):
+            box.label(text=line, icon=_ROLE_ICONS.get(message["role"], "DOT") if index == 0 else "BLANK1")
+        if len(lines) > limit:
+            box.label(text="…", icon="BLANK1")
+    if not state.messages:
+        column.label(text="Ask Claude to build or change the scene.", icon="INFO")
+    if state.busy:
         row = layout.row()
-        row.prop(props, "ph_resolution", text="")
-        row.operator("freeplugin.polyhaven_apply", icon="CHECKMARK")
+        row.label(text=state.status or "Working…", icon="SORTTIME")
+        row.operator("freeplugin.chat_stop", text="", icon="CANCEL")
+    row = layout.row(align=True)
+    row.enabled = not state.busy
+    row.prop(props, "chat_input", text="", icon="GREASEPENCIL")
+    row.operator("freeplugin.chat_send", text="", icon="PLAY")
+    row = layout.row(align=True)
+    row.operator("freeplugin.chat_transcript", text="Transcript", icon="FILE_TEXT")
+    row.operator("freeplugin.chat_reset", text="New", icon="ADD")
 
 
-class FREEPLUGIN_PT_local(_Panel):
-    bl_label = "Local tools (free)"
-    bl_parent_id = "FREEPLUGIN_PT_main"
-    bl_options = {"DEFAULT_CLOSED"}
+def _draw_generations(layout):
+    body = _section(layout, "generations", "Generations", "RENDERLAYERS")
+    if body is None:
+        return
+    if not tasks.TASKS:
+        body.label(text="Nothing generated yet in this session.")
+    for task in tasks.TASKS[:8]:
+        box = body.box().column(align=True)
+        box.label(text=task.label, icon=_TASK_ICONS[task.state])
+        box.label(text=task.detail[:80])
+    row = body.row(align=True)
+    row.operator("freeplugin.open_outputs", text="Open folder", icon="FILE_FOLDER")
+    row.operator("freeplugin.clear_tasks", text="Clear", icon="TRASH")
+
+
+class FREEPLUGIN_PT_main(bpy.types.Panel):
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "Free Plugin"
+    bl_label = "Free Plugin"
+    bl_options = {"HIDE_HEADER"}
 
     def draw(self, context):
+        layout = self.layout
         props = context.scene.free_plugin
-        layout = self.layout
-        row = layout.row(align=True)
-        row.prop(props, "remesh_voxel")
-        row.operator("freeplugin.local_remesh", text="Remesh")
-        layout.operator("freeplugin.local_lods", icon="MOD_DECIM")
+        settings = prefs.get()
+        _status_header(layout, context)
+        layout.prop(props, "sidebar_tab", expand=True)
+        tab = props.sidebar_tab
 
+        if tab == "SCENE":
+            connected = account.account.logged_in and chat.claude_executable() is not None
+            body = _section(layout, "claude", "Claude account", "USER", closed=bool(connected))
+            if body is not None:
+                draw_claude_account(body)
+            body = _section(layout, "chat", "Chat with Claude", "COMMUNITY")
+            if body is not None:
+                _draw_chat(body, context)
+            body = _section(layout, "bar", "Viewport bar", "WINDOW", closed=True)
+            if body is not None:
+                body.prop(settings, "overlay_enabled", text="Show the prompt bar in the 3D view")
+                body.prop(settings, "chat_model")
+                body.label(text="Click the bar, type, Enter. Shift+Enter: new line, Esc: close.", icon="INFO")
 
-class FREEPLUGIN_PT_tasks(_Panel):
-    bl_label = "Tasks"
-    bl_parent_id = "FREEPLUGIN_PT_main"
+        elif tab == "MESH":
+            body = _section(layout, "mesh", "3D Model", "MESH_MONKEY")
+            if body is not None:
+                body.prop(props, "mesh_source", expand=True)
+                params.draw_slot(body, context.scene, "mesh")
+                entry = props.mesh_model.entry() or {}
+                if props.mesh_source == "TEXT":
+                    body.prop(props, "mesh_prompt", text="")
+                    if entry and not entry.get("text") and not entry.get("provider"):
+                        body.label(text="Text → image (Image model) → 3D", icon="INFO")
+                elif props.mesh_source == "FILE":
+                    body.prop(props, "mesh_image_path", text="")
+                if entry.get("provider") == "meshy":
+                    row = body.row()
+                    row.prop(props, "mesh_texture")
+                    sub = row.row()
+                    sub.enabled = props.mesh_texture
+                    sub.prop(props, "mesh_pbr")
+                body.operator("freeplugin.generate_3d", icon="PLAY")
+            body = _section(layout, "rig", "Auto-Rig", "ARMATURE_DATA", closed=True)
+            if body is not None:
+                body.label(text="Rigs the active humanoid (facing -Y)")
+                body.prop(props, "rig_provider", text="")
+                body.prop(props, "rig_height")
+                body.operator("freeplugin.rig", icon="PLAY")
+            body = _section(layout, "retexture", "Retexture", "BRUSH_DATA", closed=True)
+            if body is not None:
+                column = body.column()
+                column.enabled = bool(prefs.meshy_key())
+                if not column.enabled:
+                    body.label(text="Needs a Meshy key", icon="INFO")
+                column.prop(props, "retexture_prompt", text="Style")
+                column.operator("freeplugin.retexture", icon="PLAY")
+            body = _section(layout, "local", "Mesh tools (free)", "MOD_REMESH", closed=True)
+            if body is not None:
+                row = body.row(align=True)
+                row.prop(props, "remesh_voxel")
+                row.operator("freeplugin.local_remesh", text="Remesh")
+                body.operator("freeplugin.local_lods", icon="MOD_DECIM")
 
-    def draw(self, context):
-        layout = self.layout
-        if not tasks.TASKS:
-            layout.label(text="Nothing yet")
-            return
-        icons = {"running": "SORTTIME", "done": "CHECKMARK", "error": "ERROR"}
-        for task in tasks.TASKS[:8]:
-            box = layout.box().column(align=True)
-            box.label(text=task.label, icon=icons[task.state])
-            box.label(text=task.detail[:80])
-        layout.operator("freeplugin.clear_tasks", icon="TRASH")
+        elif tab == "IMAGE":
+            body = _section(layout, "image", "Image", "IMAGE_DATA")
+            if body is not None:
+                params.draw_slot(body, context.scene, "image")
+                body.prop(props, "image_prompt", text="")
+                body.prop(props, "image_reference")
+                if props.image_reference == "FILE":
+                    body.prop(props, "image_reference_path", text="")
+                body.prop(props, "image_placement")
+                body.operator("freeplugin.generate_image", icon="PLAY")
+            body = _section(layout, "material", "Material", "MATERIAL", closed=True)
+            if body is not None:
+                body.label(text="Uses the Image model, on the active mesh", icon="INFO")
+                body.prop(props, "texture_prompt", text="")
+                body.prop(props, "texture_tiling")
+                body.operator("freeplugin.generate_texture", icon="PLAY")
+
+        elif tab == "VIDEO":
+            if not settings.show_video:
+                layout.label(text="Video is hidden (the most expensive feature).", icon="INFO")
+                layout.prop(settings, "show_video", text="Show video")
+            else:
+                body = _section(layout, "video", "Video", "FILE_MOVIE")
+                if body is not None:
+                    params.draw_slot(body, context.scene, "video")
+                    body.prop(props, "video_prompt", text="")
+                    body.prop(props, "video_source")
+                    body.operator("freeplugin.generate_video", icon="PLAY")
+
+        elif tab == "ASSETS":
+            body = _section(layout, "polyhaven", "Poly Haven (free, CC0)", "WORLD")
+            if body is not None:
+                body.prop(props, "ph_kind", expand=True)
+                row = body.row(align=True)
+                row.prop(props, "ph_query", text="", icon="VIEWZOOM")
+                row.operator("freeplugin.polyhaven_search", text="", icon="VIEWZOOM")
+                body.template_list("FREEPLUGIN_UL_assets", "", props, "ph_results", props, "ph_index", rows=6)
+                row = body.row()
+                row.prop(props, "ph_resolution", text="")
+                row.operator("freeplugin.polyhaven_apply", icon="CHECKMARK")
+
+        _draw_generations(layout)
 
 
 classes = (
     FREEPLUGIN_UL_assets,
     FREEPLUGIN_PT_main,
-    FREEPLUGIN_PT_image,
-    FREEPLUGIN_PT_material,
-    FREEPLUGIN_PT_video,
-    FREEPLUGIN_PT_model,
-    FREEPLUGIN_PT_polyhaven,
-    FREEPLUGIN_PT_local,
-    FREEPLUGIN_PT_tasks,
 )

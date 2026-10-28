@@ -12,7 +12,7 @@ from pathlib import Path
 PKG = Path(__file__).resolve().parents[2] / "free_plugin_blender"
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
-for name, path in (("fpb", PKG), ("fpb.providers", PKG / "providers")):
+for name, path in (("fpb", PKG), ("fpb.providers", PKG / "providers"), ("fpb.overlay", PKG / "overlay")):
     if name not in sys.modules:
         module = types.ModuleType(name)
         module.__path__ = [str(path)]

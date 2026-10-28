@@ -193,7 +193,9 @@ def draw_slot(layout, scene, slot_name):
     if slot.model == catalog.CUSTOM:
         row = layout.row(align=True)
         row.prop(slot, "custom_id", text="")
-        row.operator("freeplugin.load_model", text="", icon="FILE_REFRESH").slot = slot_name
+        row.operator("freeplugin.load_model", text="Load", icon="FILE_REFRESH").slot = slot_name
+        if not slot.loaded:
+            layout.label(text="Paste an id from fal.ai/models, then Load", icon="INFO")
     entry, endpoint_id = active_endpoint(scene, slot_name)
     if entry and entry.get("cost"):
         layout.label(text=f"Price: {entry['cost']}", icon="INFO")

@@ -31,6 +31,9 @@ git switch -c feat/<feature> origin/main
     loaded through the stand-in package in `tests/unit/conftest.py` (no bpy).
   - `tests/blender/`: anything that needs bpy. Use `harness.py`, and fake every
     network call: tests must not need a key or network access.
+  - `tests/gui/`: clicks and keys through Blender's real event loop (`sim.py`).
+    Needed for menus, the file browser and the modal bar, which calling Python
+    directly cannot exercise. Not run in CI.
 - If the user-visible version changes, bump `version` in
   `free_plugin_blender/blender_manifest.toml` and the zip name in the README.
 
@@ -40,6 +43,8 @@ git switch -c feat/<feature> origin/main
 uvx ruff@0.14.0 check .
 python3 -m pytest -q
 python3 scripts/run_blender_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender
+# when the change touches the viewport bar or any UI flow (opens a Blender window, needs a display):
+python3 scripts/run_gui_tests.py --blender ~/.local/opt/blender-5.2.2-linux-x64/blender
 ```
 
 Fix the code, never the expectation, unless the test itself is wrong; then say so in

@@ -15,6 +15,7 @@ PR to main, PR checked and green before the next feature.
 uvx ruff@0.14.0 check .
 python3 -m pytest -q                                   # tests/unit, no Blender
 python3 scripts/run_blender_tests.py --blender <path>  # tests/blender, headless Blender
+python3 scripts/run_gui_tests.py --blender <path>      # tests/gui, real clicks; needs a display, not in CI
 ```
 
 Blender tests run in a throwaway profile (`BLENDER_USER_RESOURCES`), never the

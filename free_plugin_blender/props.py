@@ -13,11 +13,25 @@ def _source_changed(self, context):
         params.sync_scene(context.scene)
 
 
+def _chat_input_changed(self, context):
+    # Enter in the field sends; clearing it re-enters here with an empty string.
+    if self.chat_input.strip() and context is not None:
+        bpy.ops.freeplugin.chat_send()
+
+
 class FreePluginAsset(bpy.types.PropertyGroup):
     asset_id: bpy.props.StringProperty()
 
 
 class FreePluginProps(bpy.types.PropertyGroup):
+    sidebar_tab: bpy.props.EnumProperty(
+        name="Tab",
+        items=[("SCENE", "Scene", "Chat with Claude and the viewport bar"),
+               ("MESH", "3D", "3D models, rigging, retexture, mesh tools"),
+               ("IMAGE", "Image", "Images and materials"),
+               ("VIDEO", "Video", "Video generation"),
+               ("ASSETS", "Assets", "Free Poly Haven HDRIs, textures and models")],
+    )
     image_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["image"])
     video_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["video"])
     mesh_model: bpy.props.PointerProperty(type=params.SLOT_CLASSES["mesh"])
@@ -77,6 +91,12 @@ class FreePluginProps(bpy.types.PropertyGroup):
     )
     ph_results: bpy.props.CollectionProperty(type=FreePluginAsset)
     ph_index: bpy.props.IntProperty()
+
+    # Chat
+    auth_code: bpy.props.StringProperty(name="Code", description="Paste the code shown in the browser, if asked")
+    chat_input: bpy.props.StringProperty(
+        name="Message", description="Press Enter to send", update=_chat_input_changed,
+    )
 
     # Local
     remesh_voxel: bpy.props.FloatProperty(name="Voxel size", default=0.02, min=0.001, soft_max=0.5, unit="LENGTH")

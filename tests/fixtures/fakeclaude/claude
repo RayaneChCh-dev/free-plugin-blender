@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Stand-in for the `claude` CLI used by the tests (auth + headless stream-json turns).
+
+State (signed in or not, last call) lives in $FAKE_CLAUDE_STATE, a directory.
+A message containing "slow" waits 30 s, so the tests can stop a running turn.
+"""
+
+import json
+import os
+import sys
+import time
+
+state = os.environ.get("FAKE_CLAUDE_STATE", os.path.dirname(os.path.abspath(__file__)))
+signed_in = os.path.join(state, "signed_in")
+args = sys.argv[1:]
+
+if args[:2] == ["auth", "status"]:
+    ok = os.path.exists(signed_in)
+    print(json.dumps({"loggedIn": ok, "authMethod": "claude.ai", "email": "test@example.com" if ok else None,
+                      "subscriptionType": "max" if ok else None}))
+    sys.exit(0)
+if args[:2] == ["auth", "login"]:
+    print("Opening browser to sign in...", flush=True)
+    print("If the browser didn't open, visit: https://claude.ai/oauth/authorize?fake=1", flush=True)
+    print("Paste code here if prompted >", flush=True)
+    if sys.stdin.readline().strip() == "GOOD":
+        open(signed_in, "w").write("1")
+        print("Login successful.")
+        sys.exit(0)
+    print("Invalid code")
+    sys.exit(1)
+if args[:2] == ["auth", "logout"]:
+    if os.path.exists(signed_in):
+        os.remove(signed_in)
+    sys.exit(0)
+
+message = sys.stdin.read()
+with open(os.path.join(state, "last_call.json"), "w") as handle:
+    json.dump({"argv": args, "stdin": message}, handle)
+
+
+def emit(event):
+    print(json.dumps(event), flush=True)
+
+
+session = "11111111-2222-3333-4444-555555555555"
+emit({"type": "system", "subtype": "init", "session_id": session,
+      "mcp_servers": [{"name": "blender", "status": "connected"}]})
+if "slow" in message:
+    time.sleep(30)
+emit({"type": "assistant", "message": {"content": [
+    {"type": "text", "text": "Je crée un cube."},
+    {"type": "tool_use", "name": "mcp__blender__execute_blender_code",
+     "input": {"code": "import bpy\nbpy.ops.mesh.primitive_cube_add()"}}]}})
+emit({"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True, "content": "boom"}]}})
+emit({"type": "assistant", "message": {"content": [{"type": "text", "text": "C'est fait."}]}})
+emit({"type": "result", "subtype": "success", "session_id": session, "result": "ok",
+      "permission_denials": [{"tool_name": "Bash"}]})
