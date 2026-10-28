@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/RayaneChCh-dev/free-plugin-blender/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/RayaneChCh-dev/free-plugin-blender?label=release&color=e8743b"></a>
-  <a href="https://github.com/RayaneChCh-dev/free-plugin-blender/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/RayaneChCh-dev/free-plugin-blender/ci.yml?branch=main&label=CI"></a>
+  <a href="https://github.com/RayaneChCh-dev/kiln-plugin-blender/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/RayaneChCh-dev/kiln-plugin-blender?label=release&color=e8743b"></a>
+  <a href="https://github.com/RayaneChCh-dev/kiln-plugin-blender/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/RayaneChCh-dev/kiln-plugin-blender/ci.yml?branch=main&label=CI"></a>
   <img alt="Blender 4.2+" src="https://img.shields.io/badge/Blender-4.2%2B%20%C2%B7%20tested%205.2-e87d0d?logo=blender&logoColor=white">
   <img alt="Python stdlib only" src="https://img.shields.io/badge/dependencies-none%20(stdlib)-3776ab?logo=python&logoColor=white">
   <a href="LICENSE"><img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue"></a>
@@ -36,9 +36,8 @@
   <img src="docs/assets/chat-scene.png" alt="Chatting with Claude in the Blender viewport" width="90%">
 </p>
 
-> **Kiln** is the display name of this project. The repository, the extension id
-> (`free_plugin_blender`) and the sidebar tab (**Free Plugin**) keep their original names,
-> so existing installs and links keep working.
+> **Kiln** is the name of this project. The extension id (`free_plugin_blender`) and the sidebar
+> tab (**Free Plugin**) keep their original names, so existing installs keep working.
 
 ## ✨ Features
 
@@ -54,6 +53,7 @@
 | 🎨 | **Retexture** a model | fal.ai · Meshy retexture | see fal.ai |
 | 🎬 | Text / camera view → **video** (hidden by default) | fal.ai · Kling 3.0, Veo 3.1, Seedance… | ~$0.14 / s |
 | 🌄 | HDRIs, PBR textures, 3D models | **Poly Haven** (CC0) | **free** |
+| 🗂️ | **My generations**: everything you generated, filtered and one click away | your `~/Kiln` folder | **free** |
 | 🔁 | Copy a motion between rigs, voxel remesh, LOD | Blender | **free** |
 
 Any other fal.ai model can be added from its id, and its options appear automatically.
@@ -61,7 +61,7 @@ Any other fal.ai model can be added from its id, and its options appear automati
 ## 🚀 Quick start
 
 1. **Download** `free_plugin_blender-X.Y.Z.zip` from the
-   [**latest release**](https://github.com/RayaneChCh-dev/free-plugin-blender/releases/latest).
+   [**latest release**](https://github.com/RayaneChCh-dev/kiln-plugin-blender/releases/latest).
 2. In Blender: **Edit → Preferences → Get Extensions → ⌄ → Install from Disk…** and pick the zip.
 3. **Edit → Preferences → Add-ons → Free Plugin Blender**:
    - click **Connect my Claude subscription** to chat with Claude;
@@ -92,7 +92,7 @@ Poly Haven assets and the local mesh tools work with **no account at all**.
 > Always install the **latest release** to get the newest features and fixes. The zip
 > attached to each release is built and tested by CI. You don't need to build anything.
 
-1. Open the [**Releases page**](https://github.com/RayaneChCh-dev/free-plugin-blender/releases/latest).
+1. Open the [**Releases page**](https://github.com/RayaneChCh-dev/kiln-plugin-blender/releases/latest).
 2. Under **Assets**, download **`free_plugin_blender-X.Y.Z.zip`**. Do **not** unzip it.
    (Ignore *Source code (zip)*: that is the raw repository, not the extension.)
 3. Open Blender and go to **Edit → Preferences…**.
@@ -309,6 +309,25 @@ check the **price shown next to the Generate button** before you click.
 
 Attach the **camera view** with **+** to generate from what the camera sees (image → image,
 image → 3D, image → video).
+
+### My generations
+
+Everything you generate is saved in **`~/Kiln`** (change it in *Preferences → Display and files →
+Output folder*), sorted into `images/`, `textures/`, `models/`, `rigs/`, `animations/` and `videos/`.
+In the **Assets** tab, switch the source chip from *Poly Haven* to **My generations**:
+
+<p align="center">
+  <img src="docs/assets/my-generations.png" alt="Assets tab, My generations: 10 files in ~/Kiln, filter chip All, search field" width="70%">
+</p>
+
+- the filter chip shows **All · 3D · Animation · Images · Video**;
+- type in the field to filter by name, as you type; **Refresh** re-reads the folder;
+- **click an item** to put it back in the scene: a 3D model or animation is imported at the 3D cursor,
+  a material image goes on the active mesh, an image follows *Image → Put result* (plane, camera
+  background or image only), and a video goes into the Video Sequencer.
+
+The sidebar's **Assets** tab has the same list. Files saved by versions before 0.12 (in the
+extension's own folder) are listed too.
 
 ### The sidebar
 

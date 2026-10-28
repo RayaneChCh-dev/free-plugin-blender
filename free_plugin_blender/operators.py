@@ -18,7 +18,7 @@ from pathlib import Path
 
 import bpy
 
-from . import account, catalog, chat, controls, net, prefs, scene, tasks, ui_controls
+from . import account, catalog, chat, controls, library, net, prefs, scene, tasks, ui_controls
 from .providers import fal, meshy, polyhaven
 
 TEXTURE_PROMPT = ("Seamless tileable PBR albedo texture of {}, flat even lighting, "
@@ -491,6 +491,51 @@ class FREEPLUGIN_OT_polyhaven_apply(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class FREEPLUGIN_OT_library_use(bpy.types.Operator):
+    bl_idname = "freeplugin.library_use"
+    bl_label = "Use"
+    bl_description = ("Put one of your generations in the scene: 3D and animations at the 3D cursor, "
+                      "a material image on the active mesh, an image as set in Image › Put result, "
+                      "a video in the Video Sequencer")
+    bl_options = {"REGISTER", "UNDO"}
+
+    filepath: bpy.props.StringProperty(options={"SKIP_SAVE"})
+
+    def execute(self, context):
+        path = Path(self.filepath)
+        entry = next((e for e in library.scan(prefs.library_roots()) if e.path == path), None)
+        if entry is None or not path.is_file():
+            self.report({"ERROR"}, f"Not in your generations any more: {path.name}")
+            library.CACHE.clear()
+            return {"CANCELLED"}
+        if entry.kind in ("MESH", "ANIMATION"):
+            cursor = context.scene.cursor.location.copy()
+            names = scene.import_glb(path, {"free_plugin_library": str(path)})
+            for name in names:
+                obj = bpy.data.objects[name]
+                if obj.parent is None:
+                    obj.location = cursor
+            self.report({"INFO"}, f"Imported {entry.name}")
+        elif entry.kind == "VIDEO":
+            scene.add_movie_strip(path)
+            self.report({"INFO"}, f"{entry.name}: added to the Video Sequencer")
+        else:
+            obj = context.active_object
+            if entry.folder == "textures" and obj is not None and obj.type == "MESH":
+                scene.build_material(obj, entry.name[:60], {"base_color": path},
+                                     tiling=context.scene.free_plugin.texture_tiling, bump_from_color=True)
+                self.report({"INFO"}, f"Material {entry.name} on {obj.name}")
+                return {"FINISHED"}
+            image = scene.load_image(path)
+            placement = context.scene.free_plugin.image_placement
+            if placement == "PLANE":
+                scene.image_to_plane(image, name=entry.name[:60])
+            elif placement == "CAMERA_BG":
+                scene.image_to_camera_background(image)
+            self.report({"INFO"}, f"Loaded {entry.name}")
+        return {"FINISHED"}
+
+
 class FREEPLUGIN_OT_local_remesh(bpy.types.Operator):
     bl_idname = "freeplugin.local_remesh"
     bl_label = "Voxel remesh"
@@ -716,7 +761,7 @@ class FREEPLUGIN_OT_open_outputs(bpy.types.Operator):
     bl_label = "Open output folder"
 
     def execute(self, context):
-        bpy.ops.wm.path_open(filepath=str(prefs.output_dir()))
+        bpy.ops.wm.path_open(filepath=str(prefs.output_dir()))  # creates ~/Kiln if needed
         return {"FINISHED"}
 
 
@@ -741,6 +786,7 @@ classes = (
     FREEPLUGIN_OT_rig,
     FREEPLUGIN_OT_polyhaven_search,
     FREEPLUGIN_OT_polyhaven_apply,
+    FREEPLUGIN_OT_library_use,
     FREEPLUGIN_OT_local_remesh,
     FREEPLUGIN_OT_local_lods,
     FREEPLUGIN_OT_chat_send,

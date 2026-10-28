@@ -16,7 +16,7 @@ def test():
                  "polyhaven_search", "polyhaven_apply", "local_remesh", "local_lods", "reload_catalog",
                  "chat_send", "chat_stop", "chat_reset", "chat_transcript", "claude_connect", "claude_disconnect",
                  "claude_send_code", "overlay", "overlay_set", "overlay_browse", "animate_preset", "generate_motion",
-                 "copy_motion", "api_models_refresh", "mcp_copy_command"):
+                 "copy_motion", "api_models_refresh", "mcp_copy_command", "library_use"):
         harness.check(f"operator {name}", name in ops)
     harness.check("scene settings", hasattr(bpy.context.scene, "free_plugin"))
     harness.check("main panel", hasattr(bpy.types, "FREEPLUGIN_PT_main"))

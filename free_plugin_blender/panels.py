@@ -12,7 +12,7 @@ from pathlib import Path
 
 import bpy
 
-from . import account, animation, api_models, chat, params, prefs, presets, tasks, ui_controls
+from . import account, animation, api_models, chat, library, params, prefs, presets, tasks, ui_controls
 
 _ROLE_ICONS = {"user": "USER", "assistant": "LIGHT_SUN", "tool": "TOOL_SETTINGS", "error": "ERROR", "info": "INFO"}
 _TASK_ICONS = {"running": "SORTTIME", "done": "CHECKMARK", "error": "ERROR"}
@@ -254,6 +254,31 @@ def _draw_generations(layout):
     row.operator("freeplugin.clear_tasks", text="Clear", icon="TRASH")
 
 
+LIBRARY_ICONS = {"MESH": "MESH_MONKEY", "ANIMATION": "ARMATURE_DATA", "IMAGE": "IMAGE_DATA", "VIDEO": "FILE_MOVIE"}
+
+
+def _draw_library(layout, props):
+    """Assets › My generations: the files in the output folder, newest first; a click puts one in the scene."""
+    body = _section(layout, "library", "My generations", "ASSET_MANAGER")
+    if body is None:
+        return
+    body.prop(props, "lib_filter", expand=True)
+    body.prop(props, "lib_query", text="", icon="VIEWZOOM")
+    entries = library.CACHE.get(prefs.library_roots(), props.lib_filter, props.lib_query)
+    if not entries:
+        body.label(text="Nothing yet: what you generate lands here.", icon="INFO")
+    column = body.column(align=True)
+    for entry in entries[:40]:
+        op = column.operator("freeplugin.library_use", text=f"{entry.name}  ·  {entry.label}",
+                             icon=LIBRARY_ICONS[entry.kind])
+        op.filepath = str(entry.path)
+    if len(entries) > 40:
+        body.label(text=f"+{len(entries) - 40} more: search to narrow down")
+    row = body.row(align=True)
+    row.label(text=str(prefs.output_root()).replace(str(Path.home()), "~"), icon="FILE_FOLDER")
+    row.operator("freeplugin.open_outputs", text="Open", icon="FILEBROWSER")
+
+
 class FREEPLUGIN_PT_main(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -374,6 +399,11 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
             _draw_animation(layout, context)
 
         elif tab == "ASSETS":
+            layout.prop(props, "assets_source", expand=True)
+            if props.assets_source == "MINE":
+                _draw_library(layout, props)
+                _draw_generations(layout)
+                return
             body = _section(layout, "polyhaven", "Poly Haven (free, CC0)", "WORLD")
             if body is not None:
                 body.prop(props, "ph_kind", expand=True)

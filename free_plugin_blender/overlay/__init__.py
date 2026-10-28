@@ -30,6 +30,7 @@ from .. import (
     catalog,
     chat,
     claude_models,
+    library,
     mcpserver,
     prefs,
     presets,
@@ -59,6 +60,24 @@ PLACEHOLDERS = {
 }
 SLOT_OF_MODE = {"mesh": "mesh", "image": "image", "material": "image", "video": "video"}
 ASSET_KINDS = (("hdris", "HDRI"), ("textures", "Textures"), ("models", "Models"))
+SOURCES = (("POLYHAVEN", "Poly Haven"), ("MINE", "My generations"))
+
+
+def _mine(context):
+    """Assets tab showing your own generations rather than Poly Haven."""
+    return context.scene.free_plugin.assets_source == "MINE"
+
+
+def _library(context):
+    """Your generations matching the tab's filter and what is typed in the field."""
+    props = context.scene.free_plugin
+    return library.CACHE.get(prefs.library_roots(), props.lib_filter, state.field.text.strip())
+
+
+def _placeholder(context, mode):
+    if mode == "assets" and _mine(context):
+        return "Search your generations…"
+    return PLACEHOLDERS[mode]
 _PASS_THROUGH_TYPES = {"MOUSEMOVE", "INBETWEEN_MOUSEMOVE", "TIMER", "TIMER_REPORT", "TIMERREGION",
                        "WINDOW_DEACTIVATE", "NONE", "TRACKPADPAN", "TRACKPADZOOM", "MOUSEROTATE",
                        "MOUSESMARTZOOM"}
@@ -76,6 +95,7 @@ class _State:
         self.scroll = 0.0
         self.show_thread = True
         self.excluded: set[str] = set()
+        self.library: list = []  # the generations last drawn in Assets › My generations, for clicks
         self.notice = ("", 0.0)
         self.session = 0
         self.errors = 0
@@ -121,7 +141,7 @@ def _model_label(context, mode):
             return api_models.current() or "Choose a model"
         return claude_models.model_label(prefs.get().chat_model)
     if mode == "assets":
-        return dict(ASSET_KINDS)[props.ph_kind]
+        return dict(library.FILTERS)[props.lib_filter] if _mine(context) else dict(ASSET_KINDS)[props.ph_kind]
     if mode == "animation":
         return "Hunyuan Motion"
     entry = getattr(props, f"{SLOT_OF_MODE[mode]}_model").entry()
@@ -156,6 +176,9 @@ def _info(context, mode):
         plan = f"Claude {account.account.plan}" if account.account.plan else "Claude"
         return plan, gfx.TEXT_DIM, None
     if mode == "assets":
+        if _mine(context):
+            count = len(_library(context))
+            return f"{count} file{'s' if count != 1 else ''} · {_short_path(prefs.output_root())}", gfx.TEXT_DIM, None
         return "Poly Haven · free", gfx.TEXT_DIM, None
     if _needs_fal(context, mode) and not prefs.fal_key():
         return "Add fal.ai key", gfx.DANGER, "prefs"
@@ -164,6 +187,10 @@ def _info(context, mode):
     entry = getattr(context.scene.free_plugin, f"{SLOT_OF_MODE[mode]}_model").entry() or {}
     cost = entry.get("cost")
     return (f"Price: {cost}" if cost else "Price: see fal.ai"), gfx.TEXT_DIM, None
+
+
+def _short_path(path):
+    return str(path).replace(os.path.expanduser("~"), "~", 1)
 
 
 def _attachment(context, mode):
@@ -315,8 +342,8 @@ def _draw_pill(context, region, s, rects):
     radius = 14 * s
     cx, cy = x + pill_w - radius - 7 * s, y + height / 2
     room = cx - radius - 12 * s - label_w - 10 * s - (x + 40 * s)
-    gfx.text(x + 40 * s, cy - size * 0.36, gfx.ellipsize(draft or PLACEHOLDERS[state.mode], room, size), size,
-             gfx.TEXT if draft else gfx.TEXT_FAINT)
+    shown = gfx.ellipsize(draft or _placeholder(bpy.context, state.mode), room, size)
+    gfx.text(x + 40 * s, cy - size * 0.36, shown, size, gfx.TEXT if draft else gfx.TEXT_FAINT)
     gfx.text(cx - radius - 12 * s - label_w, cy - 11.5 * s * 0.36, label, 11.5 * s, gfx.TEXT_FAINT)
     busy = chat.state.busy and state.mode == "scene"
     ready = bool(draft.strip())
@@ -491,6 +518,9 @@ def _draw_item(rects, item, lines, x, bottom, top, content_w, s, size, line_h, *
 
 
 def _draw_assets(context, rects, x, y, content_w, height, s):
+    if _mine(context):
+        _draw_library(context, rects, x, y, content_w, height, s)
+        return
     props = context.scene.free_plugin
     size, row = 12.5 * s, 30 * s
     results = list(props.ph_results)
@@ -509,6 +539,34 @@ def _draw_assets(context, rects, x, y, content_w, height, s):
                      gfx.BG_HOVER if state.hover == item_id else gfx.SURFACE)
         gfx.text(rx + 10 * s, ry + row / 2 - size * 0.36, gfx.ellipsize(item.name, column_w - 20 * s, size),
                  size, gfx.TEXT)
+        rects.append((item_id, rx, ry + 2 * s, column_w, row - 4 * s))
+
+
+def _draw_library(context, rects, x, y, content_w, height, s):
+    """Your generations in two columns, newest first: name, and its kind on the right."""
+    size, row = 12.5 * s, 30 * s
+    entries = _library(context)
+    state.library = entries
+    if not entries:
+        hint = ("Nothing matches: try another word or filter" if state.field.text.strip()
+                or context.scene.free_plugin.lib_filter != "ALL" else
+                f"What you generate lands in {_short_path(prefs.output_root())} and shows up here.")
+        gfx.text(x, y + height / 2 - 4 * s, hint, 12 * s, gfx.TEXT_DIM)
+        return
+    columns = 2
+    column_w = (content_w - 8 * s) / columns
+    for index, entry in enumerate(entries[: columns * int(height // row)]):
+        column, line = index % columns, index // columns
+        rx = x + column * (column_w + 8 * s)
+        ry = y + height - (line + 1) * row
+        item_id = f"lib:{index}"
+        gfx.outlined(rx, ry + 2 * s, column_w, row - 4 * s, 7 * s, gfx.SURFACE_BORDER,
+                     gfx.BG_HOVER if state.hover == item_id else gfx.SURFACE)
+        tag = entry.label
+        tag_w = gfx.measure(tag, 11 * s)
+        gfx.text(rx + 10 * s, ry + row / 2 - size * 0.36,
+                 gfx.ellipsize(entry.name, column_w - tag_w - 30 * s, size), size, gfx.TEXT)
+        gfx.text(rx + column_w - 10 * s - tag_w, ry + row / 2 - 11 * s * 0.36, tag, 11 * s, gfx.TEXT_FAINT)
         rects.append((item_id, rx, ry + 2 * s, column_w, row - 4 * s))
 
 
@@ -626,7 +684,7 @@ def _draw_card(context, region, s, rects):
     live = _live(mode)
     layout, middle_h = None, 0
     if mode == "assets":
-        count = len(context.scene.free_plugin.ph_results)
+        count = len(_library(context)) if _mine(context) else len(context.scene.free_plugin.ph_results)
         middle_h = min(-(-count // 2) * 30 * s, 182 * s) if count else 30 * s
     elif mode == "scene" and state.show_thread and (chat.state.messages or chat.state.busy):
         layout = _thread_layout(card_w - 2 * _PAD * s, s)
@@ -683,7 +741,7 @@ def _draw_card(context, region, s, rects):
     caret_line = next((i for i, (a, b) in enumerate(lines) if a <= field.caret <= b), len(lines) - 1)
     if caret_line < first_line:
         first_line = caret_line
-    placeholder = "Claude is working…" if mode == "scene" and chat.state.busy else PLACEHOLDERS[mode]
+    placeholder = "Claude is working…" if mode == "scene" and chat.state.busy else _placeholder(context, mode)
     if not field.text:
         gfx.text(text_x, text_top - line_h + 5 * s, placeholder, size, gfx.TEXT_FAINT)
     for row, (a, b) in enumerate(lines[first_line:first_line + shown_lines]):
@@ -700,7 +758,7 @@ def _draw_card(context, region, s, rects):
     # Bottom row: the send / generate button on the right, its label, then the chips from the left.
     by = box_y + 8 * s
     busy = mode == "scene" and chat.state.busy
-    empty = not field.text.strip()
+    empty = not field.text.strip() and not (mode == "assets" and _mine(context))
     if mode == "scene":
         radius = 16 * s
         gx, gy, gw, gh = box_x + box_w - pad - 2 * radius, by - 1 * s, 2 * radius, 2 * radius
@@ -714,7 +772,7 @@ def _draw_card(context, region, s, rects):
             gfx.icon_send(gx + radius, gy + radius, 13 * s, gfx.TEXT_DIM if empty else gfx.ACCENT_TEXT)
         label = _usage_short()
     else:
-        word = "Search" if mode == "assets" else "Generate"
+        word = ("Refresh" if _mine(context) else "Search") if mode == "assets" else "Generate"
         gw, gh = gfx.measure(word, 12.5 * s) + 26 * s, 30 * s
         gx, gy = box_x + box_w - pad - gw, by
         fill = gfx.TAB_ACTIVE if empty else (gfx.ACCENT_HOVER if state.hover == "generate" else gfx.ACCENT)
@@ -736,6 +794,9 @@ def _draw_card(context, region, s, rects):
         gfx.icon_plus(bx + box / 2, by + 1 * s + box / 2, 11 * s, gfx.TEXT_DIM)
         rects.append(("attach", bx, by + 1 * s, box, box))
         bx += box + 6 * s
+    if mode == "assets":
+        source = dict(SOURCES)[context.scene.free_plugin.assets_source]
+        bx += _chip(rects, "source", bx, by + 2 * s, source, chip_size, s, chevron=True) + 6 * s
     bx += _chip(rects, "model", bx, by + 2 * s, _model_label(context, mode), chip_size, s, chevron=True) + 6 * s
     if mode == "scene":
         effort = claude_models.effort_label(prefs.get().chat_effort)
@@ -795,6 +856,10 @@ def _submit(context):
             return
         state.field.set("")
         state.show_thread, state.scroll = True, 0.0
+        return
+
+    if mode == "assets" and _mine(context):
+        library.CACHE.clear()  # the list filters as you type; this re-reads the folder
         return
 
     operator, prop = {
@@ -882,6 +947,14 @@ def _click(context, hit):
             _set_source(props, state.mode, "NONE")
     elif hit.startswith("mention:"):
         state.excluded.add(hit[8:])
+    elif hit == "source":
+        _open_menu(context, FREEPLUGIN_MT_overlay_source.bl_idname)
+    elif hit.startswith("lib:"):
+        index = int(hit[4:])
+        if index < len(state.library):
+            entry = state.library[index]
+            bpy.ops.freeplugin.library_use(filepath=str(entry.path))
+            _notify(f"{entry.name}: added to the scene")
     elif hit.startswith("asset:"):
         bpy.ops.freeplugin.polyhaven_apply(asset_id=hit[6:], kind=props.ph_kind)
         _notify(f"Applying {hit[6:]}…")
@@ -1030,6 +1103,10 @@ class FREEPLUGIN_OT_overlay_set(bpy.types.Operator):
         elif self.target == "kind":
             props.ph_kind = self.value
             props.ph_results.clear()
+        elif self.target == "assets_source":
+            props.assets_source = self.value
+        elif self.target == "lib_filter":
+            props.lib_filter = self.value
         elif self.target == "source":
             _set_source(props, state.mode, self.value)
         elif self.target in catalog.SLOTS:
@@ -1103,6 +1180,13 @@ class FREEPLUGIN_MT_overlay_model(bpy.types.Menu):
                                      icon="CHECKMARK" if key == current else "BLANK1")
                 op.target, op.value = "chat_model", key
             return
+        if mode == "assets" and _mine(context):
+            current = context.scene.free_plugin.lib_filter
+            for key, label in library.FILTERS:
+                op = layout.operator("freeplugin.overlay_set", text=label,
+                                     icon="CHECKMARK" if key == current else "BLANK1")
+                op.target, op.value = "lib_filter", key
+            return
         if mode == "assets":
             for key, label in ASSET_KINDS:
                 op = layout.operator("freeplugin.overlay_set", text=label)
@@ -1146,6 +1230,20 @@ class FREEPLUGIN_MT_overlay_duration(bpy.types.Menu):
             op = layout.operator("freeplugin.overlay_set", text=f"{label} ({seconds:g} s)",
                                  icon="CHECKMARK" if abs(seconds - current) < 1e-3 else "BLANK1")
             op.target, op.value = "duration", str(seconds)
+
+
+class FREEPLUGIN_MT_overlay_source(bpy.types.Menu):
+    bl_idname = "FREEPLUGIN_MT_overlay_source"
+    bl_label = "Assets from"
+
+    def draw(self, context):
+        current = context.scene.free_plugin.assets_source
+        for key, label in SOURCES:
+            op = self.layout.operator("freeplugin.overlay_set", text=label,
+                                      icon="CHECKMARK" if key == current else "BLANK1")
+            op.target, op.value = "assets_source", key
+        self.layout.separator()
+        self.layout.operator("freeplugin.open_outputs", text="Open my generations folder", icon="FILE_FOLDER")
 
 
 class FREEPLUGIN_MT_overlay_attach(bpy.types.Menu):
@@ -1240,6 +1338,7 @@ classes = (
     FREEPLUGIN_MT_overlay_model,
     FREEPLUGIN_MT_overlay_effort,
     FREEPLUGIN_MT_overlay_duration,
+    FREEPLUGIN_MT_overlay_source,
     FREEPLUGIN_MT_overlay_attach,
 )
 
