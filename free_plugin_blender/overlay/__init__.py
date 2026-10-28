@@ -1,10 +1,11 @@
 """The prompt bar in the 3D viewport.
 
-At rest it is a pill at the bottom of every 3D view. Clicking it opens a card:
-mode tabs above it (Scene builder, 3D, Image, Material, Video, Animation, Assets), a header
-(new chat, title, price or account status), the conversation or search results,
-the selected objects as @mentions, the text field, a model menu and the
-Generate button.
+At rest it is a pill at the bottom of every 3D view. Clicking it opens a card
+(design: the "Barre du viewport" mock): a header with the mode tabs, the account
+status, new chat and collapse; the conversation (tool calls folded into one line
+per answer) or search results; a banner when something must be set up first; the
+composer with the selected objects as @mentions, the text, the model and setting
+chips, and the send or Generate button with its price.
 
 It is drawn with gpu/blf from a POST_PIXEL draw handler. A single modal
 operator per window routes events: clicks on the bar and typing while it has
@@ -15,10 +16,12 @@ are published per region by the draw pass and read by the modal.
 from __future__ import annotations
 
 import os
+import re
 import time
 import traceback
 
 import bpy
+import gpu
 
 from .. import (
     account,
@@ -33,12 +36,12 @@ from .. import (
     tasks,
     ui_controls,
 )
-from . import gfx
+from . import gfx, richtext, thread
 from .field import Field, wrap
 
 MODES = (
-    ("scene", "Scene builder"),
-    ("mesh", "3D Model"),
+    ("scene", "Scene"),
+    ("mesh", "3D"),
     ("image", "Image"),
     ("material", "Material"),
     ("video", "Video"),
@@ -77,6 +80,7 @@ class _State:
         self.session = 0
         self.errors = 0
         self.max_scroll = 0.0
+        self.open_groups: set[int] = set()  # tool groups expanded in the conversation (first message index)
 
 
 state = _State()
@@ -199,17 +203,56 @@ def _status():
     return ""
 
 
-def _title(mode):
+def _live(mode):
+    """(text, kind) for the line above the field: a notice, Claude's step, a running generation."""
     notice, at = state.notice
     if notice and time.time() - at < 6:
-        return notice, gfx.TEXT
-    status = _status()
-    if status:
-        return status, gfx.TEXT_DIM
-    if mode == "scene":
-        first = next((m["text"] for m in chat.state.messages if m["role"] == "user"), "")
-        return (first.splitlines()[0] if first else "New chat"), gfx.TEXT
-    return dict(MODES)[mode], gfx.TEXT
+        return notice, "notice"
+    if mode == "scene" and chat.state.busy:
+        return None  # shown at the end of the conversation instead
+    running = next((t for t in tasks.TASKS if t.state == "running"), None)
+    if running is not None:
+        return f"{running.label} — {running.detail}", "busy"
+    recent = next((t for t in tasks.TASKS if time.time() - t.started < 30), None)
+    if recent is not None and recent.state == "error":
+        return f"{recent.label} — {recent.detail}", "error"
+    return None
+
+
+# What to tell the user when the header chip needs an action: (sentence, button).
+_FIXES = {
+    "Install Claude Code": ("Claude Code is not installed: the chat runs through it.", "Install"),
+    "Connect Claude": ("Connect your Claude subscription to chat.", "Connect"),
+    "MCP add-on off": ("The Blender MCP add-on is off: Claude can't reach this scene.", "Fix it"),
+    "MCP port taken": ("The Free Plugin MCP port is taken by another program.", "Fix it"),
+    "Add fal.ai key": ("Generating needs a fal.ai key (pay per use).", "Add key"),
+}
+
+
+def _banner(context, mode):
+    """(sentence, button) when something must be set up first, else None."""
+    text, _color, action = _info(context, mode)
+    if action is None:
+        return None
+    if text in _FIXES:
+        return _FIXES[text]
+    if text.startswith("Add ") and text.endswith(" key"):
+        return f"Chatting with {text[4:-4]} needs its API key.", "Add key"
+    return text, "Fix it"
+
+
+def _usage_short():
+    match = re.search(r"([\d.]+k?) tokens in .*· ([\d.]+k?) out", chat.state.usage or "")
+    return f"{match[1]} in · {match[2]} out" if match else ""
+
+
+def _price(context, mode):
+    if mode == "animation":
+        return presets.MOTION_COST
+    if mode in SLOT_OF_MODE:
+        entry = getattr(context.scene.free_plugin, f"{SLOT_OF_MODE[mode]}_model").entry() or {}
+        return entry.get("cost") or "price: see fal.ai"
+    return ""
 
 
 # --------------------------------------------------------------------------- drawing
@@ -243,288 +286,464 @@ def _draw(context):
     state.rects[region.as_pointer()] = rects
 
 
+def _span(context, region, s):
+    """(left, width) of the region the toolbar and the sidebar leave free (they overlap it by default)."""
+    left = right = 0.0
+    area = context.area
+    if area is not None and context.preferences.system.use_region_overlap:
+        for other in area.regions:
+            if other.width > 1 and other.height > 1 and other.type == "TOOLS":
+                left = max(left, float(other.width))
+            elif other.width > 1 and other.height > 1 and other.type == "UI":
+                right = max(right, float(other.width))
+    if region.width - left - right < 360 * s:  # too tight: use the whole view
+        return 0.0, float(region.width)
+    return left, region.width - left - right
+
+
 def _draw_pill(context, region, s, rects):
-    width, height = min(380 * s, region.width - 40 * s), 40 * s
-    x, y = (region.width - width) / 2, 22 * s
+    left, span = _span(context, region, s)
+    pill_w, height = min(460 * s, span - 40 * s), 42 * s
+    x, y = left + (span - pill_w) / 2, 18 * s
     hovered = state.hover in ("pill", "pill_send")
-    gfx.bordered(x, y, width, height, height / 2, gfx.BG_HOVER if hovered else gfx.BG)
-    size = 13 * s
-    text = state.field.text.splitlines()[0] if state.field.text else PLACEHOLDERS[state.mode]
-    color = gfx.TEXT if state.field.text else gfx.TEXT_DIM
-    gfx.text(x + 18 * s, y + height / 2 - size * 0.36, gfx.ellipsize(text, width - 70 * s, size), size, color)
+    gfx.bordered(x, y, pill_w, height, height / 2, gfx.BG_HOVER if hovered else gfx.BG)
+    gfx.icon_spark(x + 22 * s, y + height / 2, 12 * s, gfx.CLAUDE_ICON)
+    size = 13.5 * s
+    draft = state.field.text.splitlines()[0] if state.field.text else ""
+    label = dict(MODES)[state.mode]
+    label_w = gfx.measure(label, 11.5 * s)
     radius = 14 * s
-    cx, cy = x + width - radius - 6 * s, y + height / 2
+    cx, cy = x + pill_w - radius - 7 * s, y + height / 2
+    room = cx - radius - 12 * s - label_w - 10 * s - (x + 40 * s)
+    gfx.text(x + 40 * s, cy - size * 0.36, gfx.ellipsize(draft or PLACEHOLDERS[state.mode], room, size), size,
+             gfx.TEXT if draft else gfx.TEXT_FAINT)
+    gfx.text(cx - radius - 12 * s - label_w, cy - 11.5 * s * 0.36, label, 11.5 * s, gfx.TEXT_FAINT)
     busy = chat.state.busy and state.mode == "scene"
-    gfx.circle(cx, cy, radius, gfx.ACCENT_HOVER if state.hover == "pill_send" else gfx.ACCENT)
+    ready = bool(draft.strip())
+    gfx.circle(cx, cy, radius, (gfx.ACCENT_HOVER if state.hover == "pill_send" else gfx.ACCENT) if ready
+               else gfx.TAB_ACTIVE)
     if busy:
-        gfx.icon_spinner(cx, cy, 14 * s, gfx.ACCENT_TEXT, time.time() % 1.0)
+        gfx.icon_spinner(cx, cy, 14 * s, gfx.ACCENT_LIGHT, time.time() % 1.0)
     else:
-        gfx.icon_send(cx, cy, 12 * s, gfx.ACCENT_TEXT)
-    rects.append(("pill", x, y, width, height))
+        gfx.icon_send(cx, cy, 12 * s, gfx.ACCENT_TEXT if ready else gfx.TEXT_DIM)
+    rects.append(("pill", x, y, pill_w, height))
     rects.append(("pill_send", cx - radius, cy - radius, 2 * radius, 2 * radius))
 
 
-def _chip(rects, chip_id, x, y, label, size, s, *, closable=False, chevron=False, icon_color=None, fill=None):
-    """A small rounded label; returns its width."""
+def _chip(rects, chip_id, x, y, label, size, s, *, closable=False, chevron=False, icon_color=None, fill=None,
+          style="outline", icon=None):
+    """A small rounded label; returns its width. style: outline (menus), mention, attach, warn."""
     pad = 8 * s
+    icon_w = 18 * s if icon else 0
     text_width = gfx.measure(label, size)
-    width = pad + text_width + (16 * s if closable or chevron else 0) + pad
-    height = 22 * s
+    chip_w = pad + icon_w + text_width + (16 * s if closable or chevron else 0) + pad
+    height = 26 * s
     hovered = state.hover == chip_id
-    gfx.rounded(x, y, width, height, 6 * s, fill or (gfx.BG_HOVER if hovered else gfx.BG_RAISED))
-    gfx.text(x + pad, y + height / 2 - size * 0.36, label, size, icon_color or gfx.TEXT)
+    if style == "outline":
+        gfx.outlined(x, y, chip_w, height, 7 * s, gfx.BG_HOVER if hovered else gfx.SURFACE_BORDER,
+                     fill or (gfx.BG_HOVER if hovered else gfx.SURFACE))
+        color = icon_color or gfx.TEXT
+    else:
+        backgrounds = {"mention": gfx.MENTION_BG, "attach": gfx.BG_RAISED, "warn": gfx.WARN_BG}
+        gfx.rounded(x, y, chip_w, height, 6 * s, gfx.BG_HOVER if hovered else (fill or backgrounds[style]))
+        color = icon_color or {"mention": gfx.MENTION_TEXT, "warn": gfx.WARN}.get(style, gfx.TEXT)
+    if icon:
+        icon(x + pad + 6 * s, y + height / 2, 12 * s, color)
+    gfx.text(x + pad + icon_w, y + height / 2 - size * 0.36, label, size, color)
     if closable:
-        gfx.icon_close(x + width - pad - 4 * s, y + height / 2, 6 * s, gfx.TEXT_DIM)
+        gfx.icon_close(x + chip_w - pad - 4 * s, y + height / 2, 6 * s, gfx.TEXT_DIM)
     if chevron:
-        gfx.icon_chevron(x + width - pad - 4 * s, y + height / 2, 7 * s, gfx.TEXT_DIM)
-    rects.append((chip_id, x, y, width, height))
-    return width
+        gfx.icon_chevron(x + chip_w - pad - 4 * s, y + height / 2, 7 * s, gfx.TEXT_DIM)
+    rects.append((chip_id, x, y, chip_w, height))
+    return chip_w
 
 
-def _thread_blocks(width, s):
-    """Conversation as drawable blocks: (role, lines, height). Oldest first."""
-    size, small = 12.5 * s, 11 * s
-    blocks = []
-    for message in chat.state.messages:
-        role, text = message["role"], message["text"]
-        if role == "tool":
-            gfx.text_size(small)
-            line = gfx.ellipsize("⚙ " + text.splitlines()[0], width, small)
-            blocks.append((role, [line], 18 * s))
-            continue
-        limit = width * (0.78 if role == "user" else 1.0) - (20 * s if role == "user" else 0)
-        gfx.text_size(size)
-        lines = [text[a:b].rstrip() for a, b in wrap(text, limit, lambda t: gfx.measure(t))]
-        line_height = 17 * s
-        extra = 14 * s if role == "user" else 6 * s
-        blocks.append((role, lines, len(lines) * line_height + extra))
-    return blocks
+# Text metrics of the conversation, in unscaled pixels.
+_SIZE, _LINE, _GAP, _INDENT, _PAD = 13.5, 20.0, 12.0, 32.0, 18.0
 
 
-def _draw_thread(rects, x, y, width, height, s, blocks):
-    """Draw the newest messages that fit in (x, y, width, height), honouring the scroll."""
-    size, small, line_height = 12.5 * s, 11 * s, 17 * s
-    total = sum(h + 6 * s for _, _, h in blocks)
+def _measurer(s):
+    size = _SIZE * s
+    return lambda text, style: gfx.measure_style(text, size, style)
+
+
+def _thread_layout(content_w, s):
+    """[(item, lines, height)] for the conversation, oldest first."""
+    found = []
+    measure = _measurer(s)
+    column = content_w - _INDENT * s
+    for item in thread.items(chat.state.messages):
+        if item.kind == "user":
+            lines = richtext.layout(richtext.plain(item.text), content_w * 0.78 - 26 * s, measure)
+            height = len(lines) * _LINE * s + 18 * s
+        elif item.kind == "tools":
+            lines = []
+            height = 28 * s + (len(item.tools) * 18 * s + 6 * s if item.key in state.open_groups else 0)
+        else:
+            lines = richtext.layout(item.text, column, measure, indent=14 * s)
+            height = len(lines) * _LINE * s + sum(6 * s for line in lines if line.gap_before)
+        found.append((item, lines, height))
+    return found
+
+
+def _clip(x, y, w, h):
+    """Scissor to (x, y, w, h) in region pixels; returns the previous box to restore."""
+    previous = gpu.state.scissor_get()
+    ox, oy = previous[0], previous[1]
+    gpu.state.scissor_set(int(ox + x), int(oy + y), max(0, int(w)), max(0, int(h)))
+    return previous
+
+
+def _draw_thread(rects, x, y, content_w, height, s, layout):
+    """The newest items that fit in (x, y, content_w, height), honouring the scroll."""
+    size, line_h, gap = _SIZE * s, _LINE * s, _GAP * s
+    live = (chat.state.status or "Claude is thinking…") if chat.state.busy else ""
+    total = sum(h for _i, _l, h in layout) + gap * max(0, len(layout) - 1) + (30 * s if live else 0)
     state.max_scroll = max(0.0, total - height)
     state.scroll = min(state.scroll, state.max_scroll)
-    cursor = y - state.scroll  # bottom of the newest block
-    for role, lines, block_height in reversed(blocks):
-        top = cursor + block_height
-        if cursor > y + height:
-            break
-        if role == "user":
-            text_width = max(gfx.measure(line, size) for line in lines) if lines else 0
-            bubble_width = text_width + 20 * s
-            bx = x + width - bubble_width
-            visible_bottom, visible_top = max(cursor, y), min(top, y + height)
-            if visible_top > visible_bottom:
-                gfx.rounded(bx, visible_bottom, bubble_width, visible_top - visible_bottom, 10 * s, gfx.USER_BUBBLE)
-            for index, line in enumerate(lines):
-                baseline = top - 7 * s - (index + 1) * line_height + 4 * s
-                if y <= baseline <= y + height - size:
-                    gfx.text(bx + 10 * s, baseline, line, size, gfx.TEXT)
-        elif role == "tool":
-            if y <= cursor + 4 * s <= y + height - small:
-                gfx.text(x, cursor + 4 * s, lines[0], small, gfx.TEXT_FAINT)
+    rects.append(("thread", x, y, content_w, height))  # before its items, so they get the clicks
+    previous = _clip(x - 4 * s, y, content_w + 8 * s, height)
+    first_rect = len(rects)
+    try:
+        cursor = y - state.scroll  # bottom of the newest item
+        if live:
+            gfx.icon_spinner(x + _INDENT * s + 7 * s, cursor + 10 * s, 13 * s, gfx.ACCENT_LIGHT, time.time() % 1.0)
+            gfx.text(x + _INDENT * s + 22 * s, cursor + 10 * s - 12.5 * s * 0.36,
+                     gfx.ellipsize(live, content_w - _INDENT * s - 30 * s, 12.5 * s), 12.5 * s, gfx.TEXT_DIM)
+            cursor += 30 * s
+        for index, (item, lines, item_h) in enumerate(reversed(layout)):
+            if cursor > y + height:
+                break
+            top = cursor + item_h
+            if top >= y:
+                _draw_item(rects, item, lines, x, cursor, top, content_w, s, size, line_h,
+                           working=chat.state.busy and index == 0 and item.kind == "tools")
+            cursor = top + gap
+    finally:
+        gpu.state.scissor_set(*previous)
+    # Items scrolled partly out of view only take clicks where they are visible.
+    kept = []
+    for hit_id, hx, hy, hw, hh in rects[first_rect:]:
+        low, high = max(hy, y), min(hy + hh, y + height)
+        if high > low:
+            kept.append((hit_id, hx, low, hw, high - low))
+    rects[first_rect:] = kept
+
+
+def _draw_item(rects, item, lines, x, bottom, top, content_w, s, size, line_h, *, working):
+    column_x = x + _INDENT * s
+    if item.avatar:
+        gfx.circle(x + 11 * s, top - 11 * s, 11 * s, gfx.CLAUDE_BG)
+        gfx.icon_spark(x + 11 * s, top - 11 * s, 10 * s, gfx.CLAUDE_ICON)
+    if item.kind == "user":
+        text_w = max((sum(gfx.measure_style(t, size, st) for t, st in line.runs) for line in lines), default=0)
+        bubble_w = text_w + 26 * s
+        bx = x + content_w - bubble_w
+        gfx.rounded(bx, bottom, bubble_w, top - bottom, 12 * s, gfx.USER_BUBBLE)
+        for row, line in enumerate(lines):
+            gfx.rich_line(bx + 13 * s, top - 9 * s - (row + 1) * line_h + 5 * s, line, size, gfx.USER_TEXT)
+        return
+    if item.kind == "tools":
+        head, detail = thread.summary(item)
+        opened = item.key in state.open_groups
+        hover = state.hover == f"tools:{item.key}"
+        box_h = top - bottom
+        head_w = gfx.measure(head, 12 * s)
+        detail = gfx.ellipsize(detail, content_w - _INDENT * s - head_w - 80 * s, 12 * s)
+        box_w = min(content_w - _INDENT * s, 50 * s + head_w + gfx.measure(detail, 12 * s) + 30 * s)
+        gfx.outlined(column_x, bottom, box_w, box_h, 8 * s, gfx.TOOL_BORDER, gfx.BG_HOVER if hover else gfx.TOOL_BG)
+        row_y = top - 14 * s
+        chevron = gfx.icon_chevron if opened else gfx.icon_chevron_right
+        chevron(column_x + 14 * s, row_y, 8 * s, gfx.TEXT_DIM)
+        gfx.text(column_x + 26 * s, row_y - 12 * s * 0.36, head, 12 * s, gfx.TEXT_BODY)
+        gfx.text(column_x + 34 * s + head_w, row_y - 12 * s * 0.36, detail, 12 * s, gfx.TEXT_FAINT)
+        mark_x = column_x + box_w - 14 * s
+        if working:
+            gfx.icon_spinner(mark_x, row_y, 11 * s, gfx.ACCENT_LIGHT, time.time() % 1.0)
+        elif item.failed:
+            gfx.icon_close(mark_x, row_y, 7 * s, gfx.DANGER, thickness=1.7)
         else:
-            color = {"error": gfx.DANGER, "info": gfx.TEXT_DIM}.get(role, gfx.TEXT)
-            for index, line in enumerate(lines):
-                baseline = top - (index + 1) * line_height + 3 * s
-                if y <= baseline <= y + height - size:
-                    gfx.text(x, baseline, line, size, color)
-        cursor = top + 6 * s
-    rects.append(("thread", x, y, width, height))
+            gfx.icon_check(mark_x, row_y, 11 * s, gfx.OK)
+        if opened:
+            for row, line in enumerate(item.tools):
+                color = gfx.DANGER if line.startswith("failed:") else gfx.TEXT_FAINT
+                gfx.text(column_x + 26 * s, top - 28 * s - (row + 1) * 18 * s + 5 * s,
+                         gfx.ellipsize(line, box_w - 40 * s, 11.5 * s), 11.5 * s, color)
+        rects.append((f"tools:{item.key}", column_x, bottom, box_w, box_h))
+        return
+    color = {"error": gfx.DANGER, "info": gfx.TEXT_DIM}.get(item.kind, gfx.TEXT_BODY)
+    baseline = top
+    for line in lines:
+        if line.gap_before:
+            baseline -= 6 * s
+        baseline -= line_h
+        gfx.rich_line(column_x, baseline + 5 * s, line, size, color)
 
 
-def _draw_assets(context, rects, x, y, width, height, s):
+def _draw_assets(context, rects, x, y, content_w, height, s):
     props = context.scene.free_plugin
-    size, row = 12.5 * s, 26 * s
+    size, row = 12.5 * s, 30 * s
     results = list(props.ph_results)
     if not results:
         gfx.text(x, y + height / 2 - 4 * s, "Search, then click a result: HDRI → world, "
-                 "texture → active mesh, model → 3D cursor.", 11 * s, gfx.TEXT_DIM)
+                 "texture → active mesh, model → 3D cursor.", 12 * s, gfx.TEXT_DIM)
         return
     columns = 2
-    column_width = (width - 8 * s) / columns
+    column_w = (content_w - 8 * s) / columns
     for index, item in enumerate(results[: columns * int(height // row)]):
         column, line = index % columns, index // columns
-        rx = x + column * (column_width + 8 * s)
+        rx = x + column * (column_w + 8 * s)
         ry = y + height - (line + 1) * row
         item_id = f"asset:{item.asset_id}"
-        gfx.rounded(rx, ry + 2 * s, column_width, row - 4 * s, 6 * s,
-                    gfx.BG_HOVER if state.hover == item_id else gfx.BG_RAISED)
-        gfx.text(rx + 10 * s, ry + row / 2 - size * 0.36, gfx.ellipsize(item.name, column_width - 20 * s, size),
+        gfx.outlined(rx, ry + 2 * s, column_w, row - 4 * s, 7 * s, gfx.SURFACE_BORDER,
+                     gfx.BG_HOVER if state.hover == item_id else gfx.SURFACE)
+        gfx.text(rx + 10 * s, ry + row / 2 - size * 0.36, gfx.ellipsize(item.name, column_w - 20 * s, size),
                  size, gfx.TEXT)
-        rects.append((item_id, rx, ry + 2 * s, column_width, row - 4 * s))
+        rects.append((item_id, rx, ry + 2 * s, column_w, row - 4 * s))
 
 
 def props_entry_is_provider(context):
     return bool((context.scene.free_plugin.mesh_model.entry() or {}).get("provider"))
 
 
+def _icon_button(rects, hit_id, x, y, size, painter, s):
+    if state.hover == hit_id:
+        gfx.rounded(x, y, size, size, 7 * s, gfx.BG_HOVER)
+    painter(x + size / 2, y + size / 2, 11 * s, gfx.TEXT_DIM)
+    rects.append((hit_id, x, y, size, size))
+
+
+def _draw_header(context, mode, x, y, card_w, s, rects, banner):
+    """Tabs, status, new chat and collapse; returns its height."""
+    height = 46 * s
+    gfx.line(x + 1, y, x + card_w - 1, y, 1.0, gfx.DIVIDER)
+    button = 30 * s
+    bx = x + card_w - 10 * s - button
+    by = y + (height - button) / 2
+    _icon_button(rects, "collapse", bx, by, button, gfx.icon_chevron, s)
+    right = bx - 4 * s
+    if mode == "scene":
+        right -= button
+        _icon_button(rects, "new", right, by, button, gfx.icon_plus, s)
+        right -= 8 * s
+    status = ""
+    if banner is None and mode in ("scene", "assets"):
+        status = _info(context, mode)[0]
+    if status:
+        status_w = gfx.measure(status, 12 * s)
+        gfx.text(right - status_w, y + height / 2 - 12 * s * 0.36, status, 12 * s, gfx.TEXT_DIM)
+        if mode == "scene":
+            gfx.circle(right - status_w - 10 * s, y + height / 2, 3.5 * s, gfx.OK)
+            status_w += 16 * s
+        right -= status_w + 12 * s
+    modes = _modes()
+    for tab_size, pad in ((12.5 * s, 11 * s), (11.5 * s, 7 * s), (10.5 * s, 5 * s)):
+        widths = [gfx.measure(label, tab_size) + 2 * pad for _key, label in modes]
+        if x + 12 * s + sum(widths) + 6 * s + 2 * s * len(widths) <= right:
+            break
+    rail_h = 32 * s
+    rail_x, rail_y = x + 12 * s, y + (height - rail_h) / 2
+    rail_w = sum(widths) + 2 * s * (len(widths) - 1) + 6 * s
+    gfx.rounded(rail_x, rail_y, rail_w, rail_h, 9 * s, gfx.SURFACE)
+    cursor = rail_x + 3 * s
+    for (key, label), tab_w in zip(modes, widths):
+        tab_id = f"tab:{key}"
+        if key == mode or state.hover == tab_id:
+            gfx.rounded(cursor, rail_y + 3 * s, tab_w, rail_h - 6 * s, 7 * s,
+                        gfx.TAB_ACTIVE if key == mode else gfx.BG_RAISED)
+        gfx.text_centered(cursor + tab_w / 2, rail_y + rail_h / 2, label, tab_size,
+                          gfx.TEXT_STRONG if key == mode else gfx.TEXT_DIM)
+        rects.append((tab_id, cursor, rail_y + 3 * s, tab_w, rail_h - 6 * s))
+        cursor += tab_w + 2 * s
+    return height
+
+
+def _draw_banner(rects, x, y, banner_w, s, banner):
+    sentence, button = banner
+    height = 38 * s
+    gfx.outlined(x, y, banner_w, height, 10 * s, gfx.WARN_BORDER, gfx.WARN_BG)
+    gfx.icon_warning(x + 20 * s, y + height / 2, 13 * s, gfx.WARN)
+    button_w = gfx.measure(button, 12 * s) + 22 * s
+    bx = x + banner_w - 8 * s - button_w
+    gfx.rounded(bx, y + 6 * s, button_w, height - 12 * s, 7 * s,
+                hexa_bright(gfx.WARN) if state.hover == "info" else gfx.WARN)
+    gfx.text_centered(bx + button_w / 2, y + height / 2, button, 12 * s, gfx.DARK_TEXT)
+    gfx.text(x + 36 * s, y + height / 2 - 12.5 * s * 0.36,
+             gfx.ellipsize(sentence, bx - x - 48 * s, 12.5 * s), 12.5 * s, gfx.WARN_TEXT)
+    rects.append(("info", bx, y + 6 * s, button_w, height - 12 * s))
+    return height
+
+
+def hexa_bright(color, amount=0.12):
+    return tuple(min(1.0, c + amount) for c in color[:3]) + (color[3],)
+
+
+def _draw_live(x, y, live_w, s, live):
+    text, kind = live
+    size = 12.5 * s
+    cy = y + 10 * s
+    if kind == "busy":
+        gfx.icon_spinner(x + 7 * s, cy, 13 * s, gfx.ACCENT_LIGHT, time.time() % 1.0)
+    else:
+        gfx.circle(x + 7 * s, cy, 3.5 * s, gfx.DANGER if kind == "error" else gfx.ACCENT_LIGHT)
+    color = {"error": gfx.DANGER, "notice": gfx.TEXT}.get(kind, gfx.TEXT_DIM)
+    gfx.text(x + 20 * s, cy - size * 0.36, gfx.ellipsize(text, live_w - 24 * s, size), size, color)
+    return 20 * s
+
+
 def _draw_card(context, region, s, rects):
     mode = state.mode
-    pad, gap = 14 * s, 8 * s
-    width = min(700 * s, region.width - 32 * s)
-    x, y0 = (region.width - width) / 2, 16 * s
-    generate_width = 118 * s
-    size, line_height = 13.5 * s, 19 * s
+    left, span = _span(context, region, s)
+    card_w = min(720 * s, span - 32 * s)
+    x, y0 = left + (span - card_w) / 2, 16 * s
+    margin, pad = 12 * s, 12 * s
+    size, line_h = 14 * s, 21 * s
 
-    # Text field geometry.
-    text_x = x + pad
-    text_width = width - 2 * pad - generate_width - gap
+    # Composer geometry, bottom-up: bottom row, text, chips.
+    box_x, box_w = x + margin, card_w - 2 * margin
+    text_x, text_w = box_x + pad, box_w - 2 * pad
     gfx.text_size(size)
     field = state.field
-    lines = wrap(field.text, text_width, lambda t: gfx.measure(t)) if field.text else [(0, 0)]
+    lines = wrap(field.text, text_w, lambda t: gfx.measure(t)) if field.text else [(0, 0)]
     shown_lines = max(2, min(6, len(lines)))
     mentions = _mentions(context) if mode == "scene" else []
     attachment = _attachment(context, mode)
-    chips_height = 28 * s if (mentions or attachment) else 0
-    bottom_row = 30 * s
-    input_height = chips_height + shown_lines * line_height + gap + bottom_row
-    header_height = 38 * s
-    middle_height, blocks = 0, None
+    chips_h = 34 * s if (mentions or attachment) else 0
+    bottom_h = 30 * s
+    box_h = 10 * s + chips_h + shown_lines * line_h + 8 * s + bottom_h + 8 * s
+
+    banner = _banner(context, mode)
+    live = _live(mode)
+    layout, middle_h = None, 0
     if mode == "assets":
         count = len(context.scene.free_plugin.ph_results)
-        middle_height = min(-(-count // 2) * 26 * s, 182 * s) if count else 30 * s
-    elif mode == "scene" and state.show_thread and chat.state.messages:
-        blocks = _thread_blocks(width - 2 * pad, s)
-        content = sum(h + 6 * s for _, _, h in blocks)
-        middle_height = min(content, 260 * s, region.height * 0.45)
-    card_height = pad + input_height + (middle_height + gap if middle_height else 0) + header_height
+        middle_h = min(-(-count // 2) * 30 * s, 182 * s) if count else 30 * s
+    elif mode == "scene" and state.show_thread and (chat.state.messages or chat.state.busy):
+        layout = _thread_layout(card_w - 2 * _PAD * s, s)
+        content = sum(h for _i, _l, h in layout) + _GAP * s * max(0, len(layout) - 1)
+        content += 30 * s if chat.state.busy else 0
+        middle_h = min(content, 300 * s, region.height * 0.45)
 
-    gfx.bordered(x, y0, width, card_height, 14 * s, gfx.BG)
-    rects.append(("card", x, y0, width, card_height))
+    header_h = 46 * s
+    cursor = y0 + margin + box_h + 10 * s
+    live_y = cursor
+    if live:
+        cursor += 20 * s + 8 * s
+    banner_y = cursor
+    if banner:
+        cursor += 38 * s + 10 * s
+    middle_y = cursor
+    if middle_h:
+        cursor += middle_h + 14 * s
+    card_h = cursor - y0 + header_h
 
-    # Tabs above the card.
-    tab_size = 12 * s
-    modes = _modes()
-    tab_widths = [gfx.measure(label, tab_size) + 22 * s for _, label in modes]
-    tabs_width = sum(tab_widths) + 8 * s
-    tx, ty, tab_height = x + (width - tabs_width) / 2, y0 + card_height + 8 * s, 30 * s
-    gfx.bordered(tx, ty, tabs_width, tab_height, tab_height / 2, gfx.BG)
-    cursor = tx + 4 * s
-    for (key, label), tab_width in zip(modes, tab_widths):
-        tab_id = f"tab:{key}"
-        if key == mode or state.hover == tab_id:
-            gfx.rounded(cursor, ty + 4 * s, tab_width, tab_height - 8 * s, (tab_height - 8 * s) / 2,
-                        gfx.BG_RAISED if key == mode else gfx.BG_HOVER)
-        gfx.text_centered(cursor + tab_width / 2, ty + tab_height / 2, label, tab_size,
-                          gfx.TEXT if key == mode else gfx.TEXT_DIM)
-        rects.append((tab_id, cursor, ty + 4 * s, tab_width, tab_height - 8 * s))
-        cursor += tab_width
+    gfx.bordered(x, y0, card_w, card_h, 14 * s, gfx.BG)
+    rects.append(("card", x, y0, card_w, card_h))
+    _draw_header(context, mode, x, y0 + card_h - header_h, card_w, s, rects, banner)
 
-    # Header: new chat, title, info chip.
-    hy = y0 + card_height - header_height
-    icon_box = 26 * s
-    ix = x + pad - 4 * s
-    for icon_id, painter in (("new", gfx.icon_plus),):
-        if mode != "scene":
-            break
-        bx, by = ix, hy + (header_height - icon_box) / 2
-        gfx.rounded(bx, by, icon_box, icon_box, 7 * s,
-                    gfx.BG_HOVER if state.hover == icon_id else gfx.BG_RAISED)
-        painter(bx + icon_box / 2, by + icon_box / 2, 11 * s, gfx.TEXT_DIM)
-        rects.append((icon_id, bx, by, icon_box, icon_box))
-        ix += icon_box + 6 * s
-    info_text, info_color, _action = _info(context, mode)
-    info_size = 11.5 * s
-    info_width = gfx.measure(info_text, info_size) + 18 * s
-    info_x = x + width - pad - info_width
-    gfx.rounded(info_x, hy + (header_height - 24 * s) / 2, info_width, 24 * s, 7 * s, gfx.BG_RAISED)
-    gfx.text(info_x + 9 * s, hy + header_height / 2 - info_size * 0.36, info_text, info_size, info_color)
-    rects.append(("info", info_x, hy + (header_height - 24 * s) / 2, info_width, 24 * s))
-    title, title_color = _title(mode)
-    title_space = info_x - ix - 2 * gap
-    title = gfx.ellipsize(title, title_space, 12.5 * s)
-    gfx.text_centered(ix + gap + title_space / 2, hy + header_height / 2, title, 12.5 * s, title_color)
-
-    # Middle: conversation or asset results.
-    if middle_height:
-        my = y0 + pad + input_height + gap
+    if middle_h:
         if mode == "assets":
-            _draw_assets(context, rects, x + pad, my, width - 2 * pad, middle_height, s)
+            _draw_assets(context, rects, x + _PAD * s, middle_y, card_w - 2 * _PAD * s, middle_h, s)
         else:
-            _draw_thread(rects, x + pad, my, width - 2 * pad, middle_height, s, blocks)
+            _draw_thread(rects, x + _PAD * s, middle_y, card_w - 2 * _PAD * s, middle_h, s, layout)
+    if banner:
+        _draw_banner(rects, box_x, banner_y, box_w, s, banner)
+    if live:
+        _draw_live(box_x + 4 * s, live_y, box_w - 8 * s, s, live)
 
-    # Input: chips, text, bottom row.
-    top = y0 + pad + input_height
-    chip_y = top - 24 * s
+    # Composer box.
+    box_y = y0 + margin
+    gfx.outlined(box_x, box_y, box_w, box_h, 12 * s, gfx.FOCUS_BORDER if state.focused else gfx.SURFACE_BORDER,
+                 gfx.SURFACE)
+    top = box_y + box_h - 10 * s
+    chip_y = top - 26 * s
     cx = text_x
-    chip_size = 11.5 * s
+    chip_size = 12 * s
     if attachment:
         warning = attachment == "Select a mesh first"
-        cx += _chip(rects, "attach_clear", cx, chip_y, ("⚠ " if warning else "◧ ") + attachment, chip_size, s,
-                    closable=mode not in ("material", "animation"), icon_color=gfx.DANGER if warning else None) + 6 * s
+        icon = gfx.icon_camera if attachment == "Camera view" else gfx.icon_warning if warning else None
+        cx += _chip(rects, "attach_clear", cx, chip_y, attachment, chip_size, s,
+                    closable=mode not in ("material", "animation"), style="warn" if warning else "attach",
+                    icon=icon) + 6 * s
     for name in mentions:
         cx += _chip(rects, f"mention:{name}", cx, chip_y, "@" + name, chip_size, s, closable=True,
-                    icon_color=gfx.ACCENT_HOVER) + 6 * s
-    text_top = top - chips_height
+                    style="mention") + 6 * s
+    text_top = top - chips_h
     first_line = max(0, len(lines) - shown_lines)
     caret_line = next((i for i, (a, b) in enumerate(lines) if a <= field.caret <= b), len(lines) - 1)
     if caret_line < first_line:
         first_line = caret_line
+    placeholder = "Claude is working…" if mode == "scene" and chat.state.busy else PLACEHOLDERS[mode]
     if not field.text:
-        gfx.text(text_x, text_top - line_height + 4 * s, PLACEHOLDERS[mode], size, gfx.TEXT_FAINT)
+        gfx.text(text_x, text_top - line_h + 5 * s, placeholder, size, gfx.TEXT_FAINT)
     for row, (a, b) in enumerate(lines[first_line:first_line + shown_lines]):
-        baseline = text_top - (row + 1) * line_height + 4 * s
+        baseline = text_top - (row + 1) * line_h + 5 * s
         gfx.text(text_x, baseline, field.text[a:b], size, gfx.TEXT)
     if state.focused and int(time.time() * 2) % 2 == 0:
         a, _b = lines[caret_line]
         row = caret_line - first_line
         caret_x = text_x + gfx.measure(field.text[a:field.caret], size)
-        baseline = text_top - (row + 1) * line_height + 4 * s
-        gfx.line(caret_x + 1, baseline - 3 * s, caret_x + 1, baseline + size * 0.95, 1.5 * s, gfx.ACCENT_HOVER)
-    rects.append(("text", text_x, text_top - shown_lines * line_height, text_width, shown_lines * line_height))
+        baseline = text_top - (row + 1) * line_h + 5 * s
+        gfx.line(caret_x + 1, baseline - 4 * s, caret_x + 1, baseline + size * 0.95, 1.5 * s, gfx.ACCENT_LIGHT)
+    rects.append(("text", text_x, text_top - shown_lines * line_h, text_w, shown_lines * line_h))
 
-    by = y0 + pad
-    bx = text_x
-    if mode in ("image", "mesh", "video"):
-        box = 26 * s
-        gfx.rounded(bx, by + 2 * s, box, box, 7 * s, gfx.BG_HOVER if state.hover == "attach" else gfx.BG_RAISED)
-        gfx.icon_plus(bx + box / 2, by + 2 * s + box / 2, 11 * s, gfx.TEXT_DIM)
-        rects.append(("attach", bx, by + 2 * s, box, box))
-        bx += box + 6 * s
-    bx += _chip(rects, "model", bx, by + 4 * s, _model_label(context, mode), 12 * s, s, chevron=True) + 6 * s
-    if mode == "scene":
-        effort = "Effort: " + claude_models.effort_label(prefs.get().chat_effort)
-        _chip(rects, "effort", bx, by + 4 * s, effort, 12 * s, s, chevron=True)
-    elif mode == "animation":
-        _chip(rects, "duration", bx, by + 4 * s, _duration_label(context), 12 * s, s, chevron=True)
-    elif mode in ui_controls.BAR_CONTROLS and not (mode == "mesh" and props_entry_is_provider(context)):
-        slot = SLOT_OF_MODE[mode]
-        room = text_x + text_width
-        for key in ui_controls.BAR_CONTROLS[mode]:
-            control, supported, _value, label = ui_controls.control_state(context.scene, slot, key)
-            if not supported:
-                continue
-            text = label or control.label
-            chip_width = gfx.measure(text, 12 * s) + 32 * s
-            if bx + chip_width > room:
-                break
-            bx += _chip(rects, f"control:{slot}:{key}", bx, by + 4 * s, text, 12 * s, s, chevron=True,
-                        icon_color=gfx.TEXT if label else gfx.TEXT_DIM) + 6 * s
-
-    # Generate / Send / Stop.
-    gx = x + width - pad - generate_width
-    gy, gh = y0 + pad, input_height
+    # Bottom row: the send / generate button on the right, its label, then the chips from the left.
+    by = box_y + 8 * s
     busy = mode == "scene" and chat.state.busy
     empty = not field.text.strip()
-    if busy:
-        fill = gfx.BG_HOVER if state.hover == "generate" else gfx.BG_RAISED
-    elif empty:
-        fill = gfx.BG_RAISED
+    if mode == "scene":
+        radius = 16 * s
+        gx, gy, gw, gh = box_x + box_w - pad - 2 * radius, by - 1 * s, 2 * radius, 2 * radius
+        if busy:
+            gfx.circle(gx + radius, gy + radius, radius, gfx.BG_HOVER if state.hover != "generate" else gfx.TAB_ACTIVE)
+            gfx.ring(gx + radius, gy + radius, radius, 1.0 * s, hexa_bright(gfx.BG_HOVER, 0.08))
+            gfx.icon_stop(gx + radius, gy + radius, 10 * s, gfx.TEXT)
+        else:
+            fill = gfx.TAB_ACTIVE if empty else (gfx.ACCENT_HOVER if state.hover == "generate" else gfx.ACCENT)
+            gfx.circle(gx + radius, gy + radius, radius, fill)
+            gfx.icon_send(gx + radius, gy + radius, 13 * s, gfx.TEXT_DIM if empty else gfx.ACCENT_TEXT)
+        label = _usage_short()
     else:
-        fill = gfx.ACCENT_HOVER if state.hover == "generate" else gfx.ACCENT
-    gfx.rounded(gx, gy, generate_width, gh, 10 * s, fill)
-    label = {"scene": "SEND", "assets": "SEARCH"}.get(mode, "GENERATE")
-    if busy:
-        gfx.icon_spinner(gx + generate_width / 2, gy + gh / 2 + 10 * s, 16 * s, gfx.ACCENT, time.time() % 1.0)
-        gfx.text_centered(gx + generate_width / 2, gy + gh / 2 - 14 * s, "STOP", 11.5 * s, gfx.TEXT)
-    else:
-        gfx.text_centered(gx + generate_width / 2, gy + gh / 2, label, 12 * s,
-                          gfx.TEXT_FAINT if empty else gfx.ACCENT_TEXT)
-    rects.append(("generate", gx, gy, generate_width, gh))
+        word = "Search" if mode == "assets" else "Generate"
+        gw, gh = gfx.measure(word, 12.5 * s) + 26 * s, 30 * s
+        gx, gy = box_x + box_w - pad - gw, by
+        fill = gfx.TAB_ACTIVE if empty else (gfx.ACCENT_HOVER if state.hover == "generate" else gfx.ACCENT)
+        gfx.rounded(gx, gy, gw, gh, 8 * s, fill)
+        gfx.text_centered(gx + gw / 2, gy + gh / 2, word, 12.5 * s, gfx.TEXT_FAINT if empty else gfx.ACCENT_TEXT)
+        label = _price(context, mode)
+    rects.append(("generate", gx, gy, gw, gh))
+    room = gx - 10 * s
+    if label:
+        label_w = gfx.measure(label, 11.5 * s)
+        gfx.text(room - label_w, by + 15 * s - 11.5 * s * 0.36, label, 11.5 * s, gfx.TEXT_FAINT)
+        room -= label_w + 12 * s
+
+    bx = text_x
+    if mode in ("image", "mesh", "video"):
+        box = 28 * s
+        gfx.outlined(bx, by + 1 * s, box, box, 7 * s, gfx.SURFACE_BORDER,
+                     gfx.BG_HOVER if state.hover == "attach" else gfx.SURFACE)
+        gfx.icon_plus(bx + box / 2, by + 1 * s + box / 2, 11 * s, gfx.TEXT_DIM)
+        rects.append(("attach", bx, by + 1 * s, box, box))
+        bx += box + 6 * s
+    bx += _chip(rects, "model", bx, by + 2 * s, _model_label(context, mode), chip_size, s, chevron=True) + 6 * s
+    if mode == "scene":
+        effort = claude_models.effort_label(prefs.get().chat_effort)
+        _chip(rects, "effort", bx, by + 2 * s, effort, chip_size, s, chevron=True)
+    elif mode == "animation":
+        _chip(rects, "duration", bx, by + 2 * s, _duration_label(context), chip_size, s, chevron=True)
+    elif mode in ui_controls.BAR_CONTROLS and not (mode == "mesh" and props_entry_is_provider(context)):
+        slot = SLOT_OF_MODE[mode]
+        for key in ui_controls.BAR_CONTROLS[mode]:
+            control, supported, _value, label_ = ui_controls.control_state(context.scene, slot, key)
+            if not supported:
+                continue
+            text = label_ or control.label
+            chip_w = gfx.measure(text, chip_size) + 32 * s
+            if bx + chip_w > room:
+                break
+            bx += _chip(rects, f"control:{slot}:{key}", bx, by + 2 * s, text, chip_size, s, chevron=True,
+                        icon_color=gfx.TEXT if label_ else gfx.TEXT_DIM) + 6 * s
 
 
 # --------------------------------------------------------------------------- input
@@ -631,6 +850,11 @@ def _click(context, hit):
         chat.reset()
         state.field.set("")
         state.scroll = 0.0
+        state.open_groups.clear()
+    elif hit == "collapse":
+        state.expanded = state.focused = False
+    elif hit.startswith("tools:"):
+        state.open_groups ^= {int(hit[6:])}
     elif hit == "model":
         _open_menu(context, FREEPLUGIN_MT_overlay_model.bl_idname)
     elif hit == "effort":
