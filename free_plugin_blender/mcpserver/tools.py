@@ -21,9 +21,11 @@ import bpy
 
 from .. import catalog, prefs, presets, tasks
 from ..providers import polyhaven
+from . import script
 from .protocol import Image, Tool, ToolError
 
 on_main = None  # set by the package: runs a function on Blender's main thread and returns its value
+call_tool = None  # set by the package: call_tool(name, arguments) runs one tool, as an MCP request would
 
 VECTOR = {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
 COLOR = {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 4,
@@ -309,6 +311,13 @@ def run_python(code):
     return text[-4000:] or "ok"
 
 
+def run_script(code, timeout=300):
+    try:
+        return script.run(code, call_tool, timeout)
+    except script.ScriptError as error:
+        raise ToolError(str(error)) from None
+
+
 # --------------------------------------------------------------------------- tasks (worker thread)
 
 def _start(start):
@@ -412,7 +421,8 @@ def find_presets(query="", category="ALL", in_place=False):
 
 
 INSTRUCTIONS = """Tools for the user's open Blender (this window only). Units are metres, Z is up.
-Read the scene with scene_summary first. Prefer the specific tools; run_python (bpy) is the last resort.
+Read the scene with scene_summary first. For several steps (many objects, search then apply, generate then
+place, waiting on a task), write ONE run_script instead of many calls. run_python (bpy) is the last resort.
 generate and assets wait for the result (up to `wait` seconds). Generations are billed to the user's
 fal.ai account: say the cost (plugin_status lists prices), prefer free options (modelling, Poly Haven),
 never start a video or anything above $0.50 unless the user asked for it."""
@@ -460,4 +470,6 @@ def build():
         Tool("plugin_status", "Keys set, model catalog with prices, running tasks.", run=plugin_status),
         Tool("run_python", "Run bpy code in Blender (last resort). print() output and `result` are returned.",
              {"code": s}, ["code"], run=run_python),
+        Tool("run_script", script.DESCRIPTION, {"code": s, "timeout": {**i, "description": "seconds, default 300"}},
+             ["code"], run=run_script, main_thread=False),
     ]

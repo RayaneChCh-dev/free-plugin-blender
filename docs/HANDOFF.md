@@ -1,6 +1,6 @@
 # Passation : reprendre le travail sur free-plugin-blender
 
-Dernière mise à jour : 2026-10-28 (v0.14.1 publiée). À lire en premier dans une nouvelle session.
+Dernière mise à jour : 2026-10-28 (v0.15.0 publiée). À lire en premier dans une nouvelle session.
 Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`.
 
 ## 1. Le projet en bref
@@ -56,7 +56,8 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.13.0 | Actions après une image : matériau, onglet 3D avec l'image, scène par Claude avec l'image jointe (`attach.py`, `--input-format stream-json` vérifié avec le vrai Claude Code 2.1.312) | publiée |
 | 0.14.0 | *Render scene* comme source (image, 3D, vidéo : `scene.render_scene`) ; **+** de l'onglet Scene : capture du viewport sans la barre (`state.hidden`), vue caméra, rendu ou fichier, envoyés à Claude avec le message (`state.chat_images`) ; l'outil MCP `screenshot` masque aussi la barre | publiée |
 | 0.14.1 | Fix : une @mention retirée par × revient quand l'objet est désélectionné puis resélectionné (`_mentions`) | publiée |
-| 0.15.0 | Mode MCP par défaut : *Free Plugin tools only* (`OWN`), décidé par l'utilisateur après `docs/BENCHMARK.md` (≈ 2× moins de tokens qu'`EXTERNAL` avec Opus 5.5). Les préférences déjà enregistrées gardent leur mode | PR ouverte |
+| 0.15.0 | Mode MCP par défaut : *Free Plugin tools only* (`OWN`), décidé par l'utilisateur après `docs/BENCHMARK.md` (≈ 2× moins de tokens qu'`EXTERNAL` avec Opus 5.5). Les préférences déjà enregistrées gardent leur mode | publiée |
+| 0.16.0 | Outil MCP `run_script` (`mcpserver/script.py`, sans bpy) : un script Python dans un sous-processus `-I` appelle nos outils via `kiln.<outil>(...)` (une ligne JSON par appel sur stdout/stdin), seule la sortie revient ; prompts « un seul script pour plusieurs étapes ». Mesures dans `docs/BENCHMARK.md` | PR ouverte |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 

@@ -24,6 +24,8 @@ TASKS = {
              "from red at one corner to blue at the opposite corner.",
     "look": "Look at the scene through the active camera and tell me in two sentences how the lighting "
             "and framing could be improved. Do not change anything.",
+    "assets": "Use free Poly Haven assets: a sunset HDRI for the world, and two models, a wooden chair and a "
+              "potted plant, placed 2 m apart on the ground.",
 }
 
 
@@ -34,6 +36,11 @@ def scene_check(task):
         return len(meshes) >= 6, f"{len(meshes)} meshes"
     if task == "batch":
         return len(meshes) >= 25 and len(materials) >= 25, f"{len(meshes)} meshes, {len(materials)} materials"
+    if task == "assets":
+        world = bpy.context.scene.world
+        hdri = bool(world and world.node_tree and any(n.type == "TEX_ENVIRONMENT" and n.image
+                                                       for n in world.node_tree.nodes))
+        return hdri and len(meshes) >= 3, f"{len(meshes)} meshes, HDRI {'set' if hdri else 'missing'}"
     return len(meshes) == 1, f"{len(meshes)} meshes (scene must be unchanged)"
 
 
@@ -47,7 +54,8 @@ prefs.mcp_mode, prefs.mcp_port, prefs.chat_model = mode, MCP_PORT, model
 if mode != "OWN":
     addon_utils.enable("blender_mcp", default_set=True)
     scene = bpy.context.scene
-    scene.blendermcp_auto_start_server = False  # we start it ourselves, on the benchmark port
+    scene.blendermcp_auto_start_server = False
+    scene.blendermcp_use_polyhaven = True  # we start it ourselves, on the benchmark port
     server_module = sys.modules["blender_mcp"]
     server = server_module.BlenderMCPServer(port=MCP_PORT)
     bpy.types.blendermcp_server = server

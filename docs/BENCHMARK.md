@@ -59,9 +59,59 @@ reports, a proxy for subscription usage.
 - mcp-for-blender's `execute_blender_code` already works like a script: few turns,
   but a heavier context per turn.
 
+## With `run_script` (v0.16.0)
+
+`run_script` runs one Python script that calls the Free Plugin tools as `kiln.<tool>(...)`;
+only what it prints comes back. A fourth task was added, **assets**: a Poly Haven sunset HDRI,
+a wooden chair and a potted plant 2 m apart (free, several steps).
+
+### Before (v0.15.0), assets task
+
+Opus 5.5:
+
+| Task | Mode | Done | Turns | Tool calls | Tokens in (cached) | Tokens out | Cost (API $) | Time |
+|---|---|---|---|---|---|---|---|---|
+| assets | EXTERNAL | yes | 11 | 10 | 111,692 (99,640) | 2,567 | 0.168 | 34 s |
+| assets | OWN | yes | 13 | 12 | 65,543 (58,942) | 1,802 | 0.101 | 27 s |
+
+Haiku 5.5:
+
+| Task | Mode | Done | Turns | Tool calls | Tokens in (cached) | Tokens out | Cost (API $) | Time |
+|---|---|---|---|---|---|---|---|---|
+| assets | EXTERNAL | yes | 15 | 14 | 209,417 (193,625) | 4,236 | 0.007 | 76 s |
+| assets | OWN | yes | 14 | 13 | 58,337 (49,391) | 2,544 | 0.004 | 23 s |
+
+### After, mode `OWN`
+
+Opus 5.5:
+
+| Task | Mode | Done | Turns | Tool calls | Tokens in (cached) | Tokens out | Cost (API $) | Time |
+|---|---|---|---|---|---|---|---|---|
+| build | OWN | yes | 4 | 3 | 28,932 (20,510) | 1,566 | 0.103 | 24 s |
+| batch | OWN | yes | 3 | 2 | 20,245 (18,218) | 773 | 0.035 | 14 s |
+| look | OWN | yes | 3 | 2 | 13,507 (11,701) | 331 | 0.023 | 7 s |
+| assets | OWN | yes | 6 | 5 | 49,945 (44,945) | 2,006 | 0.089 | 30 s |
+
+Haiku 5.5:
+
+| Task | Mode | Done | Turns | Tool calls | Tokens in (cached) | Tokens out | Cost (API $) | Time |
+|---|---|---|---|---|---|---|---|---|
+| build | OWN | yes | 7 | 6 | 74,895 (61,388) | 5,307 | 0.006 | 31 s |
+| batch | OWN | yes | 4 | 3 | 32,500 (29,529) | 1,665 | 0.002 | 15 s |
+| look | OWN | yes | 3 | 2 | 15,191 (13,332) | 325 | 0.001 | 4 s |
+| assets | OWN | yes | 9 | 8 | 49,784 (43,904) | 2,919 | 0.003 | 25 s |
+
+### Reading
+
+- **Haiku now batches**: dining set 42 → 7 turns (116k → 75k tokens in, 11.6k → 5.3k out),
+  grid of cubes 28 → 4 turns (44k → 33k). The prompt asking for one script does as much as the tool.
+- **Assets with Opus**: 13 → 6 turns, 66k → 50k tokens (−24 %), 2.2× fewer than mcp-for-blender (112k).
+- **Build, batch and look with Opus barely move**: Opus already wrote one `run_python` script.
+- Against the old default (mcp-for-blender), the built-in tools with `run_script` send
+  1.7× to 3.7× fewer tokens on these tasks. Not 10×: most of the cost is the context of the
+  few turns left (system prompt, tool definitions, the screenshot Claude takes to check).
+
 ## Next
 
-- A `run_script` tool: a script that calls the Free Plugin tools themselves
-  (generation, assets, waiting for a task) so multi-step flows take one call.
-  Measure it with a Poly Haven task added to this benchmark (free, several steps).
-- Tell the model, in the `OWN` prompt, to group many objects in one script.
+- A task with a paid generation (generate, wait, place) when a fal.ai budget is set aside.
+- More runs per cell to measure the variance.

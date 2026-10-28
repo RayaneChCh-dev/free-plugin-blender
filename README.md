@@ -218,8 +218,9 @@ Claude edits your scene through an MCP server. In **3 · Blender MCP**, choose
 | **mcp-for-blender + Free Plugin tools** | both, and it uses ours first | same | nothing missing, but the heaviest context |
 
 **Default mode (Free Plugin tools only):** nothing to install. The built-in server runs inside
-Blender on `127.0.0.1` with a secret token. In our measurements it sends about 2× fewer tokens
-than mcp-for-blender with Opus 5.5 ([docs/BENCHMARK.md](docs/BENCHMARK.md)).
+Blender on `127.0.0.1` with a secret token. For tasks with many steps Claude writes one script
+(`run_script`) that calls the tools itself, so only its result comes back. In our measurements
+it sends 1.7× to 3.7× fewer tokens than mcp-for-blender ([docs/BENCHMARK.md](docs/BENCHMARK.md)).
 
 **mcp-for-blender mode:**
 1. Install [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
