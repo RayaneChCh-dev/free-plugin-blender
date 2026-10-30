@@ -336,8 +336,7 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
             body = _section(layout, "mesh", "3D Model", "MESH_MONKEY")
             if body is not None:
                 body.prop(props, "mesh_source", expand=True)
-                provider = (props.mesh_model.entry() or {}).get("provider")
-                params.draw_slot(body, context.scene, "mesh", None if provider else
+                params.draw_slot(body, context.scene, "mesh",
                                  lambda box: ui_controls.draw_settings(box, context.scene, "mesh"))
                 entry = props.mesh_model.entry() or {}
                 if props.mesh_source == "TEXT":
@@ -346,12 +345,6 @@ class FREEPLUGIN_PT_main(bpy.types.Panel):
                         body.label(text="Text → image (Image model) → 3D", icon="INFO")
                 elif props.mesh_source == "FILE":
                     body.prop(props, "mesh_image_path", text="")
-                if entry.get("provider") == "meshy":
-                    row = body.row()
-                    row.prop(props, "mesh_texture")
-                    sub = row.row()
-                    sub.enabled = props.mesh_texture
-                    sub.prop(props, "mesh_pbr")
                 body.operator("freeplugin.generate_3d", icon="PLAY")
             body = _section(layout, "rig", "Auto-Rig", "ARMATURE_DATA", closed=True)
             if body is not None:

@@ -41,6 +41,12 @@ def set_model(slot, key_):
     getattr(props(), f"{slot}_model").model = key_
 
 
+def set_mesh_choices(mode, model_type, topology, detail):
+    choices = props().choices
+    choices.mesh_mode, choices.mesh_model_type, choices.mesh_topology, choices.mesh_detail = (
+        mode, model_type, topology, detail)
+
+
 run([
     lambda: set_model("image", "nano_banana_pro"),
     lambda: click(rect("pill")),
@@ -65,6 +71,15 @@ run([
     lambda: check("layout still right with four 3D chips", layout_ok()),
     lambda: check("Meshy 7: mode, type, topology, detail chips", chips() == [
         "control:mesh:mode", "control:mesh:model_type", "control:mesh:topology", "control:mesh:detail"], chips()),
+    lambda: set_model("mesh", "meshy"),
+    lambda: None,
+    lambda: check("Meshy own key: the same four chips", chips() == [
+        "control:mesh:mode", "control:mesh:model_type", "control:mesh:topology", "control:mesh:detail"], chips()),
+    lambda: set_mesh_choices("preview", "smart-topology", "triangle", "medium"),
+    lambda: None,
+    lambda: check("Meshy own key: longest labels keep the four chips", len(chips()) == 4, chips()),
+    lambda: check("layout still right with the longest labels", layout_ok()),
+    lambda: set_mesh_choices("auto", "auto", "auto", "auto"),
     lambda: set_model("mesh", "trellis"),
     lambda: None,
     lambda: check("TRELLIS: only what it takes", "control:mesh:model_type" not in chips(), chips()),

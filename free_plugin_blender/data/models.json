@@ -44,6 +44,14 @@
      "text": "fal-ai/hunyuan-3d/v3.1/pro/text-to-3d", "image": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d"},
     {"key": "meshy7", "label": "Meshy 7", "cost": "$0.80",
      "text": "fal-ai/meshy/v7/text-to-3d", "image": "fal-ai/meshy/v7/image-to-3d"},
-    {"key": "meshy", "label": "Meshy (own key, credits)", "cost": "Meshy credits", "provider": "meshy"}
+    {"key": "meshy", "label": "Meshy (own key, credits)", "bar_label": "Meshy", "cost": "Meshy credits",
+     "provider": "meshy",
+     "fields": [
+       {"name": "mode", "kind": "ENUM", "options": ["preview", "full"]},
+       {"name": "model_type", "kind": "ENUM", "options": ["standard", "smart-topology"]},
+       {"name": "topology", "kind": "ENUM", "options": ["triangle", "quad"]},
+       {"name": "target_polycount", "kind": "INT", "minimum": 100, "maximum": 300000},
+       {"name": "enable_pbr", "kind": "BOOL"}
+     ]}
   ]
 }

@@ -60,6 +60,37 @@ def test():
     harness.check("mode, topology, detail mapped", body.get("mode") == "preview" and body.get("topology") == "quad"
                   and body.get("target_polycount") == 5000, body)
 
+    # 3D with the user's own Meshy key: the same settings, no fal.ai schema.
+    meshy = harness.module(".providers.meshy")
+    created = []
+
+    def fake_create(endpoint, payload, key):
+        created.append(payload)
+        return f"task{len(created)}"
+
+    meshy.create = fake_create
+    meshy.wait = lambda endpoint, task_id, key, progress=None: {"id": task_id, "model_urls": {"glb": "https://x/m.glb"}}
+    os.environ["MESHY_API_KEY"] = "test-key"
+    props.mesh_model.model = "meshy"
+    harness.check("Meshy key: settings offered", all(ui.control_state(scene, "mesh", key)[1] for key in
+                                                    ("mode", "model_type", "topology", "detail", "pbr")))
+    harness.check("Meshy key: retired lowpoly not offered",
+                  [v for v, _ in ui.control_state(scene, "mesh", "model_type")[1]] == ["standard", "smart-topology"])
+    harness.check("Meshy key: no texture size setting", ui.control_state(scene, "mesh", "texture")[1] == [])
+    bpy.ops.freeplugin.generate_3d(prompt="chair")
+    harness.wait()
+    harness.check("Meshy key: preview stops before texturing", len(created) == 1, created)
+    harness.check("Meshy key: quad low remeshes", created[0].get("topology") == "quad"
+                  and created[0].get("target_polycount") == 5000 and created[0].get("should_remesh") is True, created)
+    created.clear()
+    choices.mesh_mode, choices.mesh_model_type, choices.mesh_detail = "full", "smart-topology", "high"
+    bpy.ops.freeplugin.generate_3d(prompt="chair")
+    harness.wait()
+    harness.check("Meshy key: full refines", [p["mode"] for p in created] == ["preview", "refine"], created)
+    harness.check("Meshy key: smart topology rules", created[0].get("ai_model") == "meshy-t2.5"
+                  and created[0].get("target_polycount") == 30000 and "topology" not in created[0], created)
+    choices.mesh_mode = choices.mesh_model_type = choices.mesh_topology = choices.mesh_detail = "auto"
+
     # Video: a duration the next model lacks is dropped, not sent.
     props.video_source, props.video_model.model = "TEXT", "kling3_pro"
     choices.video_duration, choices.video_audio = "15", "on"

@@ -92,8 +92,6 @@ class FreePluginProps(bpy.types.PropertyGroup):
         update=_source_changed,
     )
     mesh_image_path: bpy.props.StringProperty(name="Image", subtype="FILE_PATH")
-    mesh_texture: bpy.props.BoolProperty(name="Texture", default=True, description="Meshy only")
-    mesh_pbr: bpy.props.BoolProperty(name="PBR maps", default=True, description="Meshy only")
     retexture_prompt: bpy.props.StringProperty(name="Style")
     retexture_provider: bpy.props.EnumProperty(
         name="Retexture with",

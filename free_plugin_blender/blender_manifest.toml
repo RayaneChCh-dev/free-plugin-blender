@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "free_plugin_blender"
-version = "0.16.1"
+version = "0.17.0"
 name = "Free Plugin Blender"
 tagline = "Generate images, video, 3D and textures with your own API keys"
 maintainer = "free-plugin-blender contributors"

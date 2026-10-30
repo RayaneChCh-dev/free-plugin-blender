@@ -15,6 +15,9 @@ TEXT_TO_3D = "v2/text-to-3d"
 IMAGE_TO_3D = "v1/image-to-3d"
 RETEXTURE = "v1/retexture"
 RIGGING = "v1/rigging"
+SMART_TOPOLOGY = "smart-topology"
+SMART_MODEL = "meshy-t2.5"  # Smart Topology refuses the default ai_model.
+SMART_MAX_POLYCOUNT = 30_000
 
 
 def _headers(key):
@@ -43,23 +46,51 @@ def wait(endpoint, task_id, key, progress=None, timeout=1800) -> dict:
     raise ApiError(f"Meshy: timed out after {timeout}s")
 
 
-def text_to_3d(prompt, key, *, texture=True, pbr=False, progress=None) -> dict:
-    preview_id = create(TEXT_TO_3D, {"mode": "preview", "prompt": prompt, "target_formats": ["glb"]}, key)
+def geometry(options) -> dict:
+    """Mesh fields for the chosen settings, within what Meshy accepts together.
+
+    Smart Topology builds the mesh at the target directly and is triangles only (quad is a
+    400); on Standard, topology and polycount only apply to a remesh, so they ask for one.
+    """
+    topology, polycount = options.get("topology"), options.get("target_polycount")
+    if options.get("model_type") == SMART_TOPOLOGY:
+        payload = {"model_type": SMART_TOPOLOGY, "ai_model": SMART_MODEL}
+        if polycount:
+            payload["target_polycount"] = min(polycount, SMART_MAX_POLYCOUNT)
+        return payload
+    payload = {"model_type": options["model_type"]} if "model_type" in options else {}
+    if topology or polycount:
+        payload["should_remesh"] = True
+    if topology:
+        payload["topology"] = topology
+    if polycount:
+        payload["target_polycount"] = polycount
+    return payload
+
+
+def text_to_3d(prompt, key, *, options=None, progress=None) -> dict:
+    """options: from controls.resolve. Mode "preview" stops at the untextured mesh."""
+    options = options or {}
+    preview = {"mode": "preview", "prompt": prompt, "target_formats": ["glb"], **geometry(options)}
+    preview_id = create(TEXT_TO_3D, preview, key)
     task = wait(TEXT_TO_3D, preview_id, key, progress)
-    if not texture:
+    if options.get("mode") == "preview":
         return task
     refine_id = create(
         TEXT_TO_3D,
-        {"mode": "refine", "preview_task_id": preview_id, "enable_pbr": pbr, "target_formats": ["glb"]},
+        {"mode": "refine", "preview_task_id": preview_id, "enable_pbr": options.get("enable_pbr", True),
+         "target_formats": ["glb"]},
         key,
     )
     return wait(TEXT_TO_3D, refine_id, key, progress)
 
 
-def image_to_3d(image_uri, key, *, texture=True, pbr=False, progress=None) -> dict:
-    payload = {"image_url": image_uri, "should_texture": texture, "target_formats": ["glb"]}
+def image_to_3d(image_uri, key, *, options=None, progress=None) -> dict:
+    options = options or {}
+    texture = options.get("mode") != "preview"
+    payload = {"image_url": image_uri, "should_texture": texture, "target_formats": ["glb"], **geometry(options)}
     if texture:
-        payload["enable_pbr"] = pbr
+        payload["enable_pbr"] = options.get("enable_pbr", True)
     return wait(IMAGE_TO_3D, create(IMAGE_TO_3D, payload, key), key, progress)
 
 

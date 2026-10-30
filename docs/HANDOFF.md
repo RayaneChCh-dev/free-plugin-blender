@@ -59,6 +59,7 @@ Puis lire `CLAUDE.md`, `.claude/skills/feature-pr/SKILL.md` et `docs/ROADMAP.md`
 | 0.15.0 | Mode MCP par défaut : *Free Plugin tools only* (`OWN`), décidé par l'utilisateur après `docs/BENCHMARK.md` (≈ 2× moins de tokens qu'`EXTERNAL` avec Opus 5.5). Les préférences déjà enregistrées gardent leur mode | publiée |
 | 0.16.0 | Outil MCP `run_script` (`mcpserver/script.py`, sans bpy) : un script Python dans un sous-processus `-I` appelle nos outils via `kiln.<outil>(...)` (une ligne JSON par appel sur stdout/stdin), seule la sortie revient ; prompts « un seul script pour plusieurs étapes ». Mesures dans `docs/BENCHMARK.md` | publiée |
 | 0.16.1 | Fix : Claude Code abandonnait tout appel MCP au bout de 60 s (`generate`, `run_script`) alors que la génération continuait ; le chat passe `MCP_TOOL_TIMEOUT` (16 min). Premières vraies générations fal.ai (TRELLIS) vérifiées via le banc (`--fal-key-from-prefs`, tâches `generate` et `slow`) | PR ouverte |
+| 0.17.0 | Réglages Mode / Type / Topology / Detail / PBR sur « Meshy (own key, credits) » : l'entrée du catalogue déclare ses `fields`, `meshy.geometry()` applique les règles de l'API (remesh, Smart Topology `meshy-t2.5`, triangles seulement, 30 000 faces max). Remplace les cases Texture / PBR. `lowpoly` non proposé (retiré par Meshy le 2026-10-30) | PR ouverte |
 
 ## 4. Onglet Animation (v0.7.0, publiée)
 
