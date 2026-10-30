@@ -111,3 +111,12 @@ def test_every_bundled_model_resolves_without_error(path):
         for control in controls.controls(slot):
             for value, _label in control.choices(controls.fields_of(data), {"size_object": True}):
                 controls.resolve(slot, {control.key: value}, data, {"size_object": True})
+
+
+def test_meshy_own_key_settings_come_from_its_catalog_fields():
+    meshy = entry("mesh", "meshy")
+    options = controls.resolve("mesh", {"mode": "preview", "model_type": "smart-topology", "topology": "quad",
+                                        "detail": "low", "pbr": "off"}, meshy, meshy)
+    assert options == {"mode": "preview", "model_type": "smart-topology", "topology": "quad",
+                       "target_polycount": 5_000, "enable_pbr": False}
+    assert controls.resolve("mesh", {"model_type": "lowpoly"}, meshy, meshy) == {}

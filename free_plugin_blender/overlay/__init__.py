@@ -202,7 +202,7 @@ def _model_label(context, mode):
     if mode == "animation":
         return "Hunyuan Motion"
     entry = getattr(props, f"{SLOT_OF_MODE[mode]}_model").entry()
-    return entry["label"] if entry else "Choose a model"
+    return entry.get("bar_label", entry["label"]) if entry else "Choose a model"
 
 
 def _needs_fal(context, mode):
@@ -633,10 +633,6 @@ def _draw_library(context, rects, x, y, content_w, height, s):
         rects.append((item_id, rx, ry + 2 * s, column_w, row - 4 * s))
 
 
-def props_entry_is_provider(context):
-    return bool((context.scene.free_plugin.mesh_model.entry() or {}).get("provider"))
-
-
 def _icon_button(rects, hit_id, x, y, size, painter, s):
     if state.hover == hit_id:
         gfx.rounded(x, y, size, size, 7 * s, gfx.BG_HOVER)
@@ -877,7 +873,7 @@ def _draw_card(context, region, s, rects):
         _chip(rects, "effort", bx, by + 2 * s, effort, chip_size, s, chevron=True)
     elif mode == "animation":
         _chip(rects, "duration", bx, by + 2 * s, _duration_label(context), chip_size, s, chevron=True)
-    elif mode in ui_controls.BAR_CONTROLS and not (mode == "mesh" and props_entry_is_provider(context)):
+    elif mode in ui_controls.BAR_CONTROLS:
         slot = SLOT_OF_MODE[mode]
         for key in ui_controls.BAR_CONTROLS[mode]:
             control, supported, _value, label_ = ui_controls.control_state(context.scene, slot, key)

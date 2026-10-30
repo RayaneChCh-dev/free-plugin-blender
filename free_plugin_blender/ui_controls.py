@@ -38,12 +38,17 @@ def get_choices(scene, slot) -> dict:
 
 
 def model_fields(scene, slot):
-    """(fields, entry) of the endpoint the slot will call, from the bundled or cached schema."""
+    """(fields, entry) of the endpoint the slot will call, from the bundled or cached schema.
+
+    A provider entry has no fal.ai endpoint: it declares its own fields in the catalog.
+    """
     from . import params
 
     entry, endpoint = params.active_endpoint(scene, slot)
-    if entry is None or endpoint is None:
-        return {}, entry or {}
+    if entry is None:
+        return {}, {}
+    if endpoint is None:
+        return controls.fields_of(entry), entry
     return controls.fields_of(catalog.cached_schema(endpoint)), entry
 
 

@@ -198,7 +198,8 @@ Hunyuan, Meshy…). You pay fal.ai directly, per generation, and there's no subs
 > starting Blender (`export FAL_KEY=...`). The preference wins when both are set.
 >
 > **Meshy key (optional):** only if you already have Meshy credits and want to spend them
-> instead of fal.ai for 3D, rigging and retexture. Get it at
+> instead of fal.ai for 3D, rigging and retexture. The mode, type, topology and detail chips
+> work with it too (no Low-poly: Meshy retired it, use Smart topology). Get it at
 > <https://www.meshy.ai/settings/api> (or set `MESHY_API_KEY`).
 
 > [!WARNING]

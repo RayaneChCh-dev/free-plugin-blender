@@ -228,13 +228,15 @@ class FREEPLUGIN_OT_generate_3d(_Generate):
         cursor = context.scene.cursor.location.copy()
 
         if choice.entry.get("provider") == "meshy":
-            key, texture, pbr = prefs.meshy_key(), props.mesh_texture, props.mesh_pbr
+            key, options = prefs.meshy_key(), controls.resolve("mesh", choice.choices, choice.entry, choice.entry)
+            if options.get("model_type") == meshy.SMART_TOPOLOGY and options.get("topology") == "quad":
+                self.report({"WARNING"}, "Smart topology is triangles only: Quads ignored")
 
             def work(task):
                 if image:
-                    result = meshy.image_to_3d(net.data_uri(image), key, texture=texture, pbr=pbr, progress=task.set)
+                    result = meshy.image_to_3d(net.data_uri(image), key, options=options, progress=task.set)
                 else:
-                    result = meshy.text_to_3d(prompt, key, texture=texture, pbr=pbr, progress=task.set)
+                    result = meshy.text_to_3d(prompt, key, options=options, progress=task.set)
                 task.set("downloading…")
                 path = net.download(meshy.glb_url(result), folder / _stamp(label, "glb"))
                 return {"meshy_task_id": result["id"]}, path
